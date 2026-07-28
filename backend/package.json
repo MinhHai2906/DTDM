@@ -1,0 +1,16 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Backend for importing Firebase users",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "import": "node import-users.js import",
+    "delete": "node import-users.js delete"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.10.1",
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}

@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=yes"
+    />
+    <title>PhoneStore - Thanh toán</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/payment.css" />
+  </head>
+  <body>
+    <header>
+      <div class="header-container">
+        <div class="logo" onclick="location.href = 'index.html'">
+          <h1>📱 PhoneStore</h1>
+        </div>
+        <div class="search-bar">
+          <input
+            type="text"
+            placeholder="Tìm kiếm sản phẩm..."
+            id="searchInput"
+          />
+          <button id="searchBtn"><i class="fas fa-search"></i></button>
+        </div>
+        <div class="nav-menu">
+          <a href="index.html">Trang chủ</a>
+          <a href="products.html">Sản phẩm</a>
+          <a href="promotion.html">Khuyến mãi</a>
+          <a href="cart.html">
+            <div class="cart-icon">
+              <i class="fas fa-shopping-cart"></i>
+              <span class="cart-count" id="cartCount">0</span>
+            </div>
+          </a>
+          <div class="profile-area">
+            <div class="profile-trigger">
+              <img
+                src="https://ui-avatars.com/api/?name=User&background=b7791f&color=fff&size=40&rounded=true"
+                alt="Avatar"
+                class="profile-avatar"
+              />
+              <span class="profile-name" style="display: none">User</span>
+              <i class="fas fa-chevron-down profile-icon"></i>
+            </div>
+            <div class="profile-dropdown" style="display: none">
+              <a href="profile.html" class="dropdown-item">
+                <i class="fas fa-user-circle"></i> Thông tin cá nhân
+              </a>
+              <a href="order-history.html" class="dropdown-item">
+                <i class="fas fa-receipt"></i> Lịch sử mua hàng
+              </a>
+              <button class="dropdown-item logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Đăng xuất
+              </button>
+            </div>
+            <a href="signin.html" class="login-btn" style="display: none"
+              >Đăng nhập</a
+            >
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="payment-main">
+      <div id="paymentEmpty" class="payment-empty" style="display: none"></div>
+
+      <div id="paymentContent" class="payment-layout" style="display: none">
+        <section class="payment-form-section">
+          <h3>Thông tin nhận hàng</h3>
+          <form id="paymentForm" class="payment-form">
+            <div class="field-grid two-col">
+              <div class="field-group">
+                <label for="fullName">Họ và tên</label>
+                <input type="text" id="fullName" required />
+              </div>
+              <div class="field-group">
+                <label for="phone">Số điện thoại</label>
+                <input type="tel" id="phone" required />
+                <small class="field-note"
+                  >Nhập đúng số điện thoại để nhân viên xác nhận đơn</small
+                >
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label for="email">Email</label>
+              <input type="email" id="email" required />
+            </div>
+
+            <div class="field-group">
+              <label for="address">Địa chỉ chi tiết</label>
+              <input type="text" id="address" required />
+            </div>
+
+            <div class="field-group">
+              <label for="note">Ghi chú đơn hàng</label>
+              <textarea
+                id="note"
+                rows="3"
+                placeholder="Ví dụ: giao giờ hành chính"
+              ></textarea>
+            </div>
+
+            <div class="field-group">
+              <label for="paymentMethod">Phương thức thanh toán</label>
+              <select id="paymentMethod" required>
+                <option value="cod">Tiền mặt khi nhận hàng</option>
+              </select>
+            </div>
+
+            <button type="submit" class="place-order-btn">
+              Xác nhận đặt hàng
+            </button>
+          </form>
+        </section>
+
+        <aside class="payment-summary">
+          <h3>Đơn hàng đã chọn</h3>
+          <div id="paymentItems" class="payment-items"></div>
+          <div class="summary-line">
+            <span>Tạm tính</span><strong id="sumSubtotal">0đ</strong>
+          </div>
+          <div class="summary-line">
+            <span>Giảm giá</span><strong id="sumDiscount">0đ</strong>
+          </div>
+          <div class="summary-line">
+            <span>Phí vận chuyển</span><strong id="sumShipping">0đ</strong>
+          </div>
+          <div class="summary-line total">
+            <span>Tổng thanh toán</span><strong id="sumTotal">0đ</strong>
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/payment.js"></script>
+    <script src="js/profile-ui.js"></script>
+  </body>
+</html>

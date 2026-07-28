@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "frontend/User/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "^/(.*)$", "dest": "/frontend/User/$1" }
+  ]
+}

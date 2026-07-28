@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Đăng Nhập - MobiStore Admin</title>
+
+    <!-- Font + Icon -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+
+    <style>
+      :root {
+        --bg-primary: #0a0e1a;
+        --bg-card: #1a1f35;
+        --bg-input: #151b30;
+        --accent: #7c3aed;
+        --accent2: #06b6d4;
+        --text: #f1f5f9;
+        --text2: #94a3b8;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        background: var(--bg-primary);
+        color: var(--text);
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      /* BACKGROUND */
+      .bg-orb {
+        position: absolute;
+        width: 400px;
+        height: 400px;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.15;
+      }
+
+      .orb-1 {
+        background: #7c3aed;
+        top: -100px;
+        left: -100px;
+      }
+
+      .orb-2 {
+        background: #06b6d4;
+        bottom: -100px;
+        right: -100px;
+      }
+
+      /* WRAPPER */
+      .login-wrapper {
+        display: flex;
+        width: 1000px;
+        border-radius: 20px;
+        overflow: hidden;
+        background: rgba(26, 31, 53, 0.6);
+        backdrop-filter: blur(20px);
+        z-index: 10;
+      }
+
+      /* LEFT */
+      .login-branding {
+        flex: 1;
+        padding: 40px;
+        background: linear-gradient(
+          135deg,
+          rgba(124, 58, 237, 0.2),
+          rgba(6, 182, 212, 0.1)
+        );
+      }
+
+      .brand-logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      .brand-logo-icon {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #7c3aed, #06b6d4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+      }
+
+      .brand-logo-text {
+        font-size: 20px;
+        font-weight: 800;
+      }
+
+      .brand-title {
+        font-size: 28px;
+        margin-bottom: 10px;
+      }
+
+      .highlight {
+        background: linear-gradient(135deg, #7c3aed, #06b6d4);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .brand-desc {
+        color: var(--text2);
+      }
+
+      /* RIGHT */
+      .login-form-panel {
+        flex: 1;
+        padding: 40px;
+      }
+
+      .form-container {
+        max-width: 350px;
+      }
+
+      .form-title {
+        font-size: 22px;
+        margin-bottom: 5px;
+      }
+
+      .form-subtitle {
+        color: var(--text2);
+        margin-bottom: 20px;
+      }
+
+      /* INPUT */
+      .input-group {
+        margin-bottom: 15px;
+      }
+
+      .input-wrapper {
+        position: relative;
+      }
+
+      .input-icon {
+        position: absolute;
+        left: 12px;
+        top: 12px;
+        color: var(--text2);
+      }
+
+      input {
+        width: 100%;
+        padding: 12px 12px 12px 40px;
+        background: var(--bg-input);
+        border: none;
+        border-radius: 8px;
+        color: white;
+      }
+
+      /* TOGGLE */
+      .toggle-password {
+        position: absolute;
+        right: 10px;
+        top: 10px;
+        background: none;
+        border: none;
+        color: #aaa;
+        cursor: pointer;
+      }
+
+      /* BUTTON */
+      .login-btn {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #7c3aed, #06b6d4);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        margin-top: 15px;
+        cursor: pointer;
+      }
+
+      .login-btn:hover {
+        opacity: 0.9;
+      }
+
+      .secondary-btn {
+        width: 100%;
+        padding: 12px;
+        margin-top: 10px;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 8px;
+        color: #dbeafe;
+        cursor: pointer;
+      }
+
+      .secondary-btn:hover {
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .message-backdrop {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(10, 14, 26, 0.7);
+        z-index: 99;
+      }
+
+      .message-backdrop.show {
+        display: flex;
+      }
+
+      .message-modal {
+        width: min(420px, calc(100% - 36px));
+        border-radius: 14px;
+        padding: 22px 18px 16px;
+        background: #10182b;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+        text-align: center;
+      }
+
+      .message-modal i {
+        color: #34d399;
+        font-size: 34px;
+        margin-bottom: 10px;
+      }
+
+      .message-modal h3 {
+        margin: 0 0 8px;
+        color: #f1f5f9;
+        font-size: 20px;
+      }
+
+      .message-modal p {
+        margin: 0;
+        color: #94a3b8;
+      }
+
+      .message-actions {
+        margin-top: 16px;
+      }
+
+      .message-ok {
+        border: none;
+        border-radius: 8px;
+        padding: 10px 14px;
+        min-width: 100px;
+        color: #fff;
+        cursor: pointer;
+        background: linear-gradient(135deg, #7c3aed, #06b6d4);
+      }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  </head>
+
+  <body>
+    <!-- Background -->
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+
+    <div class="login-wrapper">
+      <!-- LEFT -->
+      <div class="login-branding">
+        <div class="brand-logo">
+          <div class="brand-logo-icon">
+            <i class="fas fa-mobile-alt"></i>
+          </div>
+          <span class="brand-logo-text">MobiStore</span>
+        </div>
+
+        <div class="brand-title">
+          Trang Quản Trị <br />
+          <span class="highlight">Cửa Hàng</span>
+        </div>
+
+        <p class="brand-desc">
+          Quản lý sản phẩm, đơn hàng và khách hàng dễ dàng.
+        </p>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="login-form-panel">
+        <div class="form-container">
+          <div class="form-title">Đăng nhập Admin</div>
+          <div class="form-subtitle">Nhập thông tin để tiếp tục</div>
+
+          <form id="loginForm">
+            <div class="input-group">
+              <div class="input-wrapper">
+                <i class="fas fa-envelope input-icon"></i>
+                <input
+                  type="text"
+                  id="emailInput"
+                  placeholder="admin@mobistore.vn"
+                />
+              </div>
+            </div>
+
+            <div class="input-group">
+              <div class="input-wrapper">
+                <i class="fas fa-lock input-icon"></i>
+                <input
+                  type="password"
+                  id="passwordInput"
+                  placeholder="Mật khẩu"
+                />
+                <button
+                  type="button"
+                  class="toggle-password"
+                  onclick="togglePass()"
+                >
+                  <i class="fas fa-eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" class="login-btn">Đăng Nhập</button>
+            <button type="button" id="seedAdminBtn" class="secondary-btn">
+              Tạo lại admin mặc định
+            </button>
+          </form>
+          <p
+            id="loginStatus"
+            style="margin-top: 15px; min-height: 20px; color: #94a3b8"
+          ></p>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="messageBackdrop"
+      class="message-backdrop"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="message-modal">
+        <i class="fas fa-circle-check"></i>
+        <h3 id="messageTitle">Thông báo</h3>
+        <p id="messageText">Nội dung thông báo</p>
+        <div class="message-actions">
+          <button id="messageOk" class="message-ok">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const ADMIN_ACCOUNTS = [
+        { email: "admin@gmail.com", password: "123456" },
+        { email: "admin@mobistore.vn", password: "admin123" },
+      ];
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDk1XTVn68McS02jMIXnyQ3bqtpLF3L1XQ",
+        authDomain: "web-dienthoai0-dtdm.firebaseapp.com",
+        projectId: "web-dienthoai0-dtdm",
+        storageBucket: "web-dienthoai0-dtdm.firebasestorage.app",
+        messagingSenderId: "102142538462",
+        appId: "1:102142538462:web:8c2c6c4637a54304ef484f",
+      };
+
+      const app = firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+      const ADMIN_LOGIN_API = "http://localhost:3001/api/admin-login";
+      const loginStatus = document.getElementById("loginStatus");
+      const seedAdminBtn = document.getElementById("seedAdminBtn");
+      const messageBackdrop = document.getElementById("messageBackdrop");
+      const messageTitle = document.getElementById("messageTitle");
+      const messageText = document.getElementById("messageText");
+      const messageOk = document.getElementById("messageOk");
+      let messageCloseHandler = null;
+
+      function togglePass() {
+        const pass = document.getElementById("passwordInput");
+        pass.type = pass.type === "password" ? "text" : "password";
+      }
+
+      function setStatus(message, isError = false) {
+        loginStatus.textContent = message || "";
+        loginStatus.style.color = isError ? "#fca5a5" : "#94a3b8";
+      }
+
+      function showMessagePopup(title, message, onClose) {
+        messageTitle.textContent = title;
+        messageText.textContent = message;
+        messageCloseHandler = onClose || null;
+        messageBackdrop.classList.add("show");
+      }
+
+      function closeMessagePopup() {
+        messageBackdrop.classList.remove("show");
+        if (typeof messageCloseHandler === "function") {
+          const handler = messageCloseHandler;
+          messageCloseHandler = null;
+          handler();
+        }
+      }
+
+      function isKnownAdminCredential(email, password) {
+        return ADMIN_ACCOUNTS.some(
+          (account) => account.email === email && account.password === password,
+        );
+      }
+
+      async function ensureAdminRecord(user, fallbackEmail) {
+        const userRef = db.collection("users").doc(user.uid);
+        const snapshot = await userRef.get();
+        const payload = {
+          uid: user.uid,
+          email: user.email || fallbackEmail,
+          emailNormalized: (user.email || fallbackEmail || "").toLowerCase(),
+          displayName: user.displayName || "Admin",
+          role: "admin",
+          updatedAt: new Date(),
+        };
+
+        if (!snapshot.exists) {
+          await userRef.set({
+            ...payload,
+            createdAt: new Date(),
+          });
+          return;
+        }
+
+        if (snapshot.data()?.role !== "admin") {
+          await userRef.set(
+            {
+              ...snapshot.data(),
+              ...payload,
+              role: "admin",
+              updatedAt: new Date(),
+            },
+            { merge: true },
+          );
+        }
+      }
+
+      async function signInAdminWithEmailPassword(email, password) {
+        await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+        try {
+          const userCredential = await auth.signInWithEmailAndPassword(
+            email,
+            password,
+          );
+          return {
+            user: userCredential.user,
+            payload: { email },
+          };
+        } catch (firebaseError) {
+          if (
+            firebaseError.code === "auth/invalid-credential" ||
+            firebaseError.code === "auth/wrong-password"
+          ) {
+            throw new Error(
+              "Sai tài khoản hoặc mật khẩu admin. Nếu vừa đổi Firebase mới, hãy tạo lại admin trong Firebase Authentication rồi thử lại.",
+            );
+          }
+
+          throw firebaseError;
+        }
+      }
+
+      async function bootstrapAdminWithEmailPassword(email, password) {
+        await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        await auth.signOut().catch(() => {});
+        localStorage.removeItem("mobistore_auth");
+
+        const signInMethods = await auth.fetchSignInMethodsForEmail(email);
+
+        if (!signInMethods || signInMethods.length === 0) {
+          const userCredential = await auth.createUserWithEmailAndPassword(
+            email,
+            password,
+          );
+          return {
+            user: userCredential.user,
+            payload: { email },
+          };
+        }
+
+        return await signInAdminWithEmailPassword(email, password);
+      }
+
+      async function loginAdmin(email, password) {
+        if (!isKnownAdminCredential(email, password)) {
+          throw new Error("Sai tài khoản hoặc mật khẩu admin.");
+        }
+
+        try {
+          return await signInAdminWithEmailPassword(email, password);
+        } catch (error) {
+          throw error;
+        }
+      }
+
+      async function seedDefaultAdmin() {
+        const defaultAdmin = ADMIN_ACCOUNTS[0];
+
+        try {
+          const loginResult = await bootstrapAdminWithEmailPassword(
+            defaultAdmin.email,
+            defaultAdmin.password,
+          );
+          try {
+            await ensureAdminRecord(loginResult.user, defaultAdmin.email);
+          } catch (recordError) {
+            console.warn(
+              "Không ghi được hồ sơ admin sau khi tạo:",
+              recordError,
+            );
+          }
+
+          localStorage.setItem(
+            "mobistore_auth",
+            JSON.stringify({
+              user: defaultAdmin.email,
+              uid: loginResult.user.uid,
+              loginTime: new Date().toISOString(),
+            }),
+          );
+
+          setStatus("Đã tạo admin mặc định.");
+          alert("Đã tạo admin mặc định: admin@gmail.com / 123456");
+          return;
+        } catch (createError) {
+          throw createError;
+        }
+      }
+
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const email = document
+            .getElementById("emailInput")
+            .value.trim()
+            .toLowerCase();
+          const pass = document.getElementById("passwordInput").value;
+          const submitButton = this.querySelector(".login-btn");
+
+          try {
+            submitButton.disabled = true;
+            submitButton.textContent = "Đang đăng nhập...";
+            setStatus("Đang xác thực tài khoản admin...");
+
+            const loginResult = await loginAdmin(email, pass);
+            await ensureAdminRecord(
+              loginResult.user,
+              loginResult.payload.email || email,
+            );
+
+            localStorage.setItem(
+              "mobistore_auth",
+              JSON.stringify({
+                user: loginResult.payload.email || email,
+                uid: loginResult.user.uid,
+                loginTime: new Date().toISOString(),
+              }),
+            );
+
+            setStatus("Đăng nhập thành công.");
+            showMessagePopup(
+              "Đăng nhập thành công",
+              "Chào mừng bạn quay lại trang quản trị.",
+              () => {
+                window.location.href = "admin.html";
+              },
+            );
+          } catch (error) {
+            console.error(error);
+
+            let message = "Không thể đăng nhập admin.";
+            if (error.code === "auth/operation-not-allowed") {
+              message =
+                "Firebase Auth Email/Password chưa được bật. Hãy bật provider này trong Firebase Console.";
+            } else if (error.message) {
+              message = error.message;
+            }
+
+            setStatus(message, true);
+            alert(message);
+          } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = "Đăng Nhập";
+          }
+        });
+
+      seedAdminBtn.addEventListener("click", async () => {
+        try {
+          seedAdminBtn.disabled = true;
+          setStatus("Đang tạo admin mặc định...");
+          await seedDefaultAdmin();
+        } catch (error) {
+          console.error(error);
+          setStatus(error.message || "Không thể tạo admin mặc định.", true);
+          alert(error.message || "Không thể tạo admin mặc định.");
+        } finally {
+          seedAdminBtn.disabled = false;
+        }
+      });
+
+      messageOk.addEventListener("click", closeMessagePopup);
+      messageBackdrop.addEventListener("click", (event) => {
+        if (event.target === messageBackdrop) {
+          closeMessagePopup();
+        }
+      });
+    </script>
+  </body>
+</html>

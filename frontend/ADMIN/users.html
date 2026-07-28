@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Người dùng</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      .main input,
+      .main select,
+      .main textarea,
+      .main button {
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #334155;
+        font-size: 14px;
+        box-sizing: border-box;
+      }
+
+      .main input,
+      .main select,
+      .main textarea {
+        width: 100%;
+        background: #0f172a;
+        color: #f8fafc;
+      }
+
+      .main input::placeholder,
+      .main textarea::placeholder {
+        color: #64748b;
+      }
+
+      .action-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 18px;
+        flex-wrap: wrap;
+      }
+
+      .main button {
+        background: #2563eb;
+        color: white;
+        cursor: pointer;
+        transition: background 0.3s;
+        border: none;
+      }
+
+      .main button:hover {
+        background: #1d4ed8;
+      }
+
+      .main button.secondary {
+        background: #334155;
+      }
+
+      .main button.secondary:hover {
+        background: #475569;
+      }
+
+      .status-line {
+        font-size: 13px;
+        color: #93c5fd;
+        min-height: 18px;
+        margin-top: 10px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+        color: white;
+        table-layout: auto;
+      }
+
+      th,
+      td {
+        border: 1px solid #334155;
+        padding: 10px 8px;
+        text-align: center;
+        vertical-align: middle;
+      }
+
+      th {
+        background: #1e293b;
+        font-weight: bold;
+      }
+
+      .table-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .form-group label {
+        font-size: 13px;
+        color: #cbd5e1;
+      }
+
+      .toast-container {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        z-index: 9999;
+      }
+
+      .toast {
+        min-width: 260px;
+        max-width: 360px;
+        padding: 14px 18px;
+        border-radius: 14px;
+        color: white;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+        opacity: 0;
+        transform: translateY(16px);
+        transition:
+          opacity 0.3s ease,
+          transform 0.3s ease;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .toast.success {
+        background: #16a34a;
+      }
+
+      .toast.error {
+        background: #dc2626;
+      }
+
+      .toast.info {
+        background: #2563eb;
+      }
+
+      .confirm-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.75);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9998;
+      }
+
+      .confirm-backdrop.active {
+        display: flex;
+      }
+
+      .confirm-modal {
+        width: min(520px, calc(100% - 40px));
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+        color: #f8fafc;
+      }
+
+      .confirm-modal h3 {
+        margin: 0 0 12px;
+        font-size: 20px;
+        color: white;
+      }
+
+      .confirm-modal p {
+        margin: 0 0 20px;
+        color: #94a3b8;
+      }
+
+      .confirm-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+      }
+
+      .confirm-actions button {
+        padding: 10px 16px;
+        border-radius: 10px;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+      }
+
+      .confirm-actions button.primary {
+        background: #2563eb;
+        color: white;
+      }
+
+      .confirm-actions button.secondary {
+        background: #1e293b;
+        color: #cbd5e1;
+        border: 1px solid #334155;
+      }
+
+      .message-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.75);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      }
+
+      .message-backdrop.active {
+        display: flex;
+      }
+
+      .message-modal {
+        width: min(480px, calc(100% - 40px));
+        background: #111827;
+        border: 1px solid #334155;
+        border-radius: 24px;
+        padding: 28px 28px 20px;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+        color: #f8fafc;
+        text-align: center;
+      }
+
+      .message-modal h3 {
+        margin: 0 0 12px;
+        font-size: 20px;
+        color: white;
+      }
+
+      .message-modal p {
+        margin: 0 0 24px;
+        color: #cbd5e1;
+        line-height: 1.6;
+      }
+
+      .message-modal.success {
+        border-color: #22c55e;
+      }
+
+      .message-modal.error {
+        border-color: #ef4444;
+      }
+
+      .message-modal.info {
+        border-color: #3b82f6;
+      }
+
+      .message-actions {
+        display: flex;
+        justify-content: center;
+      }
+
+      .message-actions button {
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+    </style>
+    <script type="module">
+      // Import Firebase modules
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        getDocs,
+        addDoc,
+        updateDoc,
+        deleteDoc,
+        doc,
+        query,
+        orderBy,
+      } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+      import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+      import {
+        getAuth,
+        createUserWithEmailAndPassword,
+        updateProfile,
+      } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+
+      // Firebase config
+      const firebaseConfig = {
+        apiKey: "AIzaSyDk1XTVn68McS02jMIXnyQ3bqtpLF3L1XQ",
+        authDomain: "web-dienthoai0-dtdm.firebaseapp.com",
+        projectId: "web-dienthoai0-dtdm",
+        storageBucket: "web-dienthoai0-dtdm.firebasestorage.app",
+        messagingSenderId: "102142538462",
+        appId: "1:102142538462:web:8c2c6c4637a54304ef484f",
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      const auth = getAuth(app);
+      let users = [];
+      let editingUserId = null;
+
+      // DOM elements
+      const usersTable = document.getElementById("usersTable");
+      const userForm = document.getElementById("userForm");
+      const formTitle = document.getElementById("formTitle");
+      const cancelBtn = document.getElementById("cancelBtn");
+      const statusLine = document.getElementById("statusLine");
+
+      // Load users from Firestore
+      async function loadUsers() {
+        if (!auth.currentUser) {
+          showStatus(
+            "Vui lòng đăng nhập admin trước khi tải danh sách người dùng.",
+            "error",
+          );
+          return;
+        }
+
+        try {
+          const q = query(
+            collection(db, "users"),
+            orderBy("createdAt", "desc"),
+          );
+          const querySnapshot = await getDocs(q);
+          users = [];
+          querySnapshot.forEach((doc) => {
+            users.push({ id: doc.id, ...doc.data() });
+          });
+
+          if (users.length === 0) {
+            showStatus(
+              "Không có người dùng nào trong hệ thống. Người dùng mới sẽ được thêm tự động khi đăng ký.",
+              "info",
+            );
+          } else {
+            showStatus("", ""); // Clear status
+          }
+
+          renderUsers();
+        } catch (error) {
+          console.error("Error loading users:", error);
+          showStatus(
+            "Lỗi khi tải danh sách người dùng: " + error.message,
+            "error",
+          );
+        }
+      }
+
+      // Render users table
+      function renderUsers() {
+        const tbody = usersTable.querySelector("tbody");
+        tbody.innerHTML = "";
+
+        users.forEach((user) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+                    <td>${user.uid || user.id}</td>
+                    <td>${user.displayName || user.name || "N/A"}</td>
+                    <td>${user.email}</td>
+                    <td>${user.role || "user"}</td>
+                    <td>${user.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString("vi-VN") : "N/A"}</td>
+                    <td class="table-actions">
+                        <button class="edit-btn" onclick="editUser('${user.id}')">Sửa</button>
+                        <button class="delete-btn" onclick="deleteUser('${user.id}')">Xóa</button>
+                    </td>
+                `;
+          tbody.appendChild(row);
+        });
+      }
+
+      // Show form for adding/editing
+      function showForm(user = null) {
+        formTitle.textContent = user
+          ? "Chỉnh sửa người dùng"
+          : "Thêm người dùng";
+        editingUserId = user ? user.id : null;
+
+        const passwordGroup = document.getElementById("passwordGroup");
+
+        if (user) {
+          document.getElementById("userName").value =
+            user.displayName || user.name || "";
+          document.getElementById("userEmail").value = user.email || "";
+          document.getElementById("userRole").value = user.role || "user";
+          passwordGroup.style.display = "none"; // Hide password when editing
+        } else {
+          userForm.reset();
+          passwordGroup.style.display = "block"; // Show password when adding
+        }
+
+        userForm.style.display = "block";
+      }
+
+      // Hide form
+      function hideForm() {
+        userForm.style.display = "none";
+        editingUserId = null;
+        userForm.reset();
+      }
+
+      // Save user
+      async function saveUser() {
+        const name = document.getElementById("userName").value.trim();
+        const email = document.getElementById("userEmail").value.trim();
+        const password = document.getElementById("userPassword").value.trim();
+        const role = document.getElementById("userRole").value;
+
+        if (!name || !email || (!editingUserId && !password)) {
+          showStatus("Vui lòng nhập đầy đủ thông tin", "error");
+          return;
+        }
+
+        try {
+          if (editingUserId) {
+            // Update existing user
+            await updateDoc(doc(db, "users", editingUserId), {
+              displayName: name,
+              email: email,
+              role: role,
+              updatedAt: new Date(),
+            });
+            showStatus("Cập nhật người dùng thành công", "success");
+          } else {
+            // Create new user in Auth and Firestore
+            const userCredential = await createUserWithEmailAndPassword(
+              auth,
+              email,
+              password,
+            );
+            const user = userCredential.user;
+
+            await updateProfile(user, { displayName: name });
+
+            await addDoc(collection(db, "users"), {
+              uid: user.uid,
+              displayName: name,
+              email: email,
+              role: role,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+            showStatus("Thêm người dùng thành công", "success");
+          }
+          hideForm();
+          loadUsers();
+        } catch (error) {
+          console.error("Error saving user:", error);
+          showStatus("Lỗi khi lưu người dùng: " + error.message, "error");
+        }
+      }
+
+      // Edit user
+      window.editUser = function (id) {
+        const user = users.find((u) => u.id === id);
+        if (user) showForm(user);
+      };
+
+      // Delete user
+      window.deleteUser = async function (id) {
+        if (
+          !(await showConfirm(
+            "Bạn có chắc muốn xóa người dùng này? Hành động này sẽ xóa hoàn toàn tài khoản khỏi hệ thống.",
+          ))
+        )
+          return;
+
+        try {
+          await deleteDoc(doc(db, "users", id));
+          showPopup("Người dùng đã bị xóa", "success", "");
+
+          try {
+            await fetch(`http://localhost:3001/api/users/${id}`, {
+              method: "DELETE",
+            });
+          } catch (backendError) {
+            console.warn("Backend delete failed:", backendError);
+          }
+
+          loadUsers();
+        } catch (error) {
+          console.error("Error deleting user:", error);
+          showPopup("Lỗi khi xóa người dùng", "error", error.message);
+        }
+      };
+
+      // Show status message
+      function showToast(message, type = "info") {
+        const toast = document.createElement("div");
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+
+        const container = document.querySelector(".toast-container");
+        container.appendChild(toast);
+
+        requestAnimationFrame(() => toast.classList.add("show"));
+        setTimeout(() => {
+          toast.classList.remove("show");
+          setTimeout(() => toast.remove(), 300);
+        }, 4200);
+      }
+
+      function showPopup(title, type = "info", message = "") {
+        const backdrop = document.getElementById("messageBackdrop");
+        const modal = document.getElementById("messageModal");
+        const modalTitle = document.getElementById("messageTitle");
+        const modalMessage = document.getElementById("messageText");
+        const okBtn = document.getElementById("messageOk");
+
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+        modal.className = `message-modal ${type}`;
+        backdrop.classList.add("active");
+
+        const closePopup = () => {
+          backdrop.classList.remove("active");
+          okBtn.removeEventListener("click", closePopup);
+        };
+
+        okBtn.addEventListener("click", closePopup);
+
+        setTimeout(() => {
+          if (backdrop.classList.contains("active")) {
+            closePopup();
+          }
+        }, 3200);
+      }
+
+      async function showConfirm(message) {
+        return new Promise((resolve) => {
+          const backdrop = document.getElementById("confirmBackdrop");
+          const confirmMessage = document.getElementById("confirmMessage");
+          const confirmBtn = document.getElementById("confirmAccept");
+          const cancelBtn = document.getElementById("confirmCancel");
+
+          confirmMessage.textContent = message;
+          backdrop.classList.add("active");
+
+          const cleanUp = () => {
+            backdrop.classList.remove("active");
+            confirmBtn.removeEventListener("click", onAccept);
+            cancelBtn.removeEventListener("click", onCancel);
+          };
+
+          const onAccept = () => {
+            cleanUp();
+            resolve(true);
+          };
+
+          const onCancel = () => {
+            cleanUp();
+            resolve(false);
+          };
+
+          confirmBtn.addEventListener("click", onAccept);
+          cancelBtn.addEventListener("click", onCancel);
+        });
+      }
+
+      function showStatus(message, type) {
+        if (!message) {
+          statusLine.textContent = "";
+          return;
+        }
+        showToast(message, type || "info");
+      }
+
+      // Event listeners
+      cancelBtn.addEventListener("click", hideForm);
+      document.getElementById("saveBtn").addEventListener("click", saveUser);
+
+      // Load users only after Firebase Auth restores the admin session
+      onAuthStateChanged(auth, (user) => {
+        if (!user) {
+          showStatus(
+            "Vui lòng đăng nhập admin để xem danh sách người dùng.",
+            "error",
+          );
+          return;
+        }
+
+        loadUsers();
+      });
+    </script>
+  </head>
+  <body>
+    <div class="sidebar">
+      <h2>MobiStore Admin</h2>
+      <a href="admin.html">Dashboard</a>
+      <a href="products.html">Sản phẩm</a>
+      <a href="orders.html">Đơn hàng</a>
+      <a class="active" href="users.html">Người dùng</a>
+      <a href="reviews.html">Bình luận</a>
+    </div>
+
+    <div class="main">
+      <h1>Quản lý người dùng</h1>
+
+      <div class="card">
+        <div class="action-row"></div>
+
+        <table id="usersTable">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Tên</th>
+              <th>Email</th>
+              <th>Vai trò</th>
+              <th>Ngày tạo</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Users will be loaded here -->
+          </tbody>
+        </table>
+      </div>
+
+      <div id="userForm" class="card" style="display: none">
+        <h2 id="formTitle">Thêm người dùng</h2>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="userName">Tên người dùng</label>
+            <input
+              type="text"
+              id="userName"
+              placeholder="Nhập tên người dùng"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="userEmail">Email</label>
+            <input type="email" id="userEmail" placeholder="Nhập email" />
+          </div>
+
+          <div class="form-group" id="passwordGroup">
+            <label for="userPassword">Mật khẩu</label>
+            <input
+              type="password"
+              id="userPassword"
+              placeholder="Nhập mật khẩu"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="userRole">Vai trò</label>
+            <select id="userRole">
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button id="saveBtn">Lưu</button>
+          <button id="cancelBtn" class="secondary">Hủy</button>
+        </div>
+      </div>
+
+      <div id="statusLine" class="status-line"></div>
+    </div>
+
+    <div class="toast-container"></div>
+
+    <div
+      id="confirmBackdrop"
+      class="confirm-backdrop"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="confirm-modal">
+        <h3>Xác nhận xóa</h3>
+        <p id="confirmMessage">Bạn có chắc muốn thực hiện hành động này?</p>
+        <div class="confirm-actions">
+          <button id="confirmCancel" class="secondary">Hủy</button>
+          <button id="confirmAccept" class="primary">Xóa</button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="messageBackdrop"
+      class="message-backdrop"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div id="messageModal" class="message-modal info">
+        <h3 id="messageTitle">Thông báo</h3>
+        <p id="messageText">Nội dung thông báo</p>
+        <div class="message-actions">
+          <button id="messageOk">OK</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

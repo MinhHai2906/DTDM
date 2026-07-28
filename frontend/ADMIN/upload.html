@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upload Products</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <h2>MobiStore</h2>
+      <a href="admin.html">📊 Dashboard</a>
+      <a href="products.html">📦 Sản phẩm</a>
+      <a href="orders.html">🛒 Đơn hàng</a>
+      <a href="users.html">👤 Người dùng</a>
+      <a class="active" href="upload.html">⬆️ Upload dữ liệu</a>
+    </div>
+
+    <div class="main">
+      <h2 id="statusTitle">Đang upload dữ liệu lên Firebase...</h2>
+      <p id="statusDetail"></p>
+
+      <script src="../User/js/data.js"></script>
+
+      <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import {
+          getAuth,
+          onAuthStateChanged,
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import {
+          getFirestore,
+          collection,
+          doc,
+          setDoc,
+          query,
+          where,
+          getDocs,
+          serverTimestamp,
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        const firebaseConfig = {
+          apiKey: "AIzaSyDk1XTVn68McS02jMIXnyQ3bqtpLF3L1XQ",
+          authDomain: "web-dienthoai0-dtdm.firebaseapp.com",
+          projectId: "web-dienthoai0-dtdm",
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const statusTitle = document.getElementById("statusTitle");
+        const statusDetail = document.getElementById("statusDetail");
+
+        const seedProducts = window.seedProducts || [];
+
+        function makeProductDocId(product) {
+          const base = `${product.brand || ""}-${product.name || ""}`
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "");
+
+          return `seed-${product.id || base || Date.now()}`;
+        }
+
+        async function uploadData() {
+          const existing = await getDocs(query(collection(db, "products")));
+          const existingNames = new Set(existing.docs.map((doc) => doc.id));
+          let created = 0;
+          let skipped = 0;
+
+          for (const product of seedProducts) {
+            const docId = makeProductDocId(product);
+            if (existingNames.has(docId)) {
+              skipped += 1;
+              continue;
+            }
+
+            await setDoc(
+              doc(db, "products", docId),
+              {
+                ...product,
+                createdAtMs: Date.now(),
+                updatedAtMs: Date.now(),
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              },
+              { merge: true },
+            );
+            created += 1;
+          }
+
+          statusTitle.textContent = "Upload hoàn tất";
+          statusDetail.textContent = `Đã thêm ${created} sản phẩm, bỏ qua ${skipped} sản phẩm đã tồn tại.`;
+        }
+
+        onAuthStateChanged(auth, async (user) => {
+          if (!user) {
+            statusTitle.textContent =
+              "Bạn cần đăng nhập admin trước rồi mở trang này để upload.";
+            statusDetail.textContent =
+              "Mở login admin, đăng nhập, sau đó quay lại trang upload.";
+            return;
+          }
+
+          statusTitle.textContent = "Đang upload dữ liệu lên Firebase...";
+          statusDetail.textContent = `Tài khoản: ${user.email || user.uid}`;
+
+          try {
+            await uploadData();
+          } catch (error) {
+            console.error("Upload thất bại:", error);
+            statusTitle.textContent = "Upload thất bại";
+            statusDetail.textContent =
+              error.message || "Không thể ghi products vào Firestore.";
+          }
+        });
+      </script>
+    </div>
+  </body>
+</html>

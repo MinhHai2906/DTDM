@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <style>
+      .page-title {
+        margin: 0 0 16px;
+        color: #f8fafc;
+      }
+
+      .status-line {
+        min-height: 18px;
+        margin-bottom: 16px;
+        color: #93c5fd;
+        font-size: 13px;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .kpi-card {
+        background: #111827;
+        border: 1px solid #334155;
+        border-radius: 16px;
+        padding: 18px;
+      }
+
+      .kpi-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .kpi-label {
+        color: #cbd5e1;
+        font-size: 14px;
+      }
+
+      .kpi-icon {
+        color: #93c5fd;
+        font-size: 18px;
+      }
+
+      .kpi-value {
+        font-size: 26px;
+        font-weight: 700;
+        color: #f8fafc;
+        margin: 2px 0 8px;
+        word-break: break-word;
+      }
+
+      .kpi-note {
+        color: #94a3b8;
+        font-size: 12px;
+      }
+
+      @media (max-width: 1100px) {
+        .cards {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 768px) {
+        .cards {
+          grid-template-columns: 1fr;
+        }
+
+        .kpi-value {
+          font-size: 22px;
+        }
+      }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  </head>
+  <body>
+    <div class="sidebar">
+      <h2>MobiStore Admin</h2>
+      <a class="active" href="admin.html">Dashboard</a>
+      <a href="products.html">Sản phẩm</a>
+      <a href="orders.html">Đơn hàng</a>
+      <a href="users.html">Người dùng</a>
+      <a href="reviews.html">Bình luận</a>
+    </div>
+
+    <div class="main">
+      <h1 class="page-title">Dashboard</h1>
+      <div id="statusLine" class="status-line">
+        Đang tải dữ liệu dashboard...
+      </div>
+
+      <div class="cards">
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-label">Doanh thu đã giao thành công</span>
+            <i class="fa-solid fa-sack-dollar kpi-icon"></i>
+          </div>
+          <div id="revenueValue" class="kpi-value">0 đ</div>
+          <div id="revenueNote" class="kpi-note">0 đơn giao thành công</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-label">Số lượng sản phẩm</span>
+            <i class="fa-solid fa-box-open kpi-icon"></i>
+          </div>
+          <div id="productsValue" class="kpi-value">0</div>
+          <div class="kpi-note">Tổng sản phẩm đang có trong trang sản phẩm</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-label">Số lượng người dùng</span>
+            <i class="fa-solid fa-users kpi-icon"></i>
+          </div>
+          <div id="usersValue" class="kpi-value">0</div>
+          <div class="kpi-note">Tổng tài khoản trong collection users</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyDk1XTVn68McS02jMIXnyQ3bqtpLF3L1XQ",
+        authDomain: "web-dienthoai0-dtdm.firebaseapp.com",
+        projectId: "web-dienthoai0-dtdm",
+        storageBucket: "web-dienthoai0-dtdm.firebasestorage.app",
+        messagingSenderId: "102142538462",
+        appId: "1:102142538462:web:8c2c6c4637a54304ef484f",
+      };
+
+      if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
+
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+
+      const statusLine = document.getElementById("statusLine");
+      const revenueValue = document.getElementById("revenueValue");
+      const revenueNote = document.getElementById("revenueNote");
+      const productsValue = document.getElementById("productsValue");
+      const usersValue = document.getElementById("usersValue");
+
+      function showStatus(message, isError = false) {
+        statusLine.textContent = message;
+        statusLine.style.color = isError ? "#fca5a5" : "#93c5fd";
+      }
+
+      function fmtMoney(value) {
+        return (Number(value) || 0).toLocaleString("vi-VN") + " đ";
+      }
+
+      function getOrderTotal(order) {
+        const explicitTotal = Number(order.total);
+        if (explicitTotal > 0) return explicitTotal;
+
+        const subtotal = Number(order.subtotal) || 0;
+        const shipping = Number(order.shipping) || 0;
+        const discount = Number(order.discount) || 0;
+        return Math.max(0, subtotal + shipping - discount);
+      }
+
+      function isDeliveredOrder(status) {
+        return status === "Đã giao hàng thành công" || status === "delivered";
+      }
+
+      async function ensureAdminAccess(user) {
+        if (!user) return false;
+
+        const idTokenResult = await user.getIdTokenResult(true);
+        if (
+          idTokenResult?.claims?.admin === true ||
+          idTokenResult?.claims?.role === "admin"
+        ) {
+          return true;
+        }
+
+        try {
+          const userDoc = await db.collection("users").doc(user.uid).get();
+          return userDoc.exists && userDoc.data()?.role === "admin";
+        } catch {
+          return false;
+        }
+      }
+
+      function subscribeDashboardData() {
+        db.collection("orders").onSnapshot(
+          (snapshot) => {
+            let revenue = 0;
+            let deliveredCount = 0;
+
+            snapshot.forEach((doc) => {
+              const order = doc.data() || {};
+              if (isDeliveredOrder(order.status)) {
+                deliveredCount += 1;
+                revenue += getOrderTotal(order);
+              }
+            });
+
+            revenueValue.textContent = fmtMoney(revenue);
+            revenueNote.textContent = `${deliveredCount} đơn giao thành công`;
+          },
+          (error) => {
+            console.error("Lỗi tải đơn hàng:", error);
+            showStatus("Không thể tải doanh thu từ đơn hàng.", true);
+          },
+        );
+
+        db.collection("products").onSnapshot(
+          (snapshot) => {
+            productsValue.textContent = String(snapshot.size);
+          },
+          (error) => {
+            console.error("Lỗi tải sản phẩm:", error);
+            showStatus("Không thể tải số lượng sản phẩm.", true);
+          },
+        );
+
+        db.collection("users").onSnapshot(
+          (snapshot) => {
+            usersValue.textContent = String(snapshot.size);
+            showStatus("");
+          },
+          (error) => {
+            console.error("Lỗi tải người dùng:", error);
+            showStatus("Không thể tải số lượng người dùng.", true);
+          },
+        );
+      }
+
+      auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+          showStatus("Bạn cần đăng nhập admin để xem dashboard.", true);
+          setTimeout(() => {
+            window.location.href = "login.html";
+          }, 900);
+          return;
+        }
+
+        showStatus("Đang kiểm tra quyền admin...");
+
+        let isAdmin = false;
+        try {
+          isAdmin = await ensureAdminAccess(user);
+        } catch (error) {
+          console.error("Lỗi kiểm tra quyền admin:", error);
+        }
+
+        if (!isAdmin) {
+          showStatus("Tài khoản này không có quyền admin.", true);
+          return;
+        }
+
+        subscribeDashboardData();
+      });
+    </script>
+  </body>
+</html>

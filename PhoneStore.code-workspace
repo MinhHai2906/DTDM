@@ -1,0 +1,24 @@
+{
+  "extends": "vscode://default",
+  "folders": [
+    {
+      "path": ".",
+      "name": "PhoneStore"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "node_modules": true,
+      ".firebase": true
+    },
+    "search.exclude": {
+      "node_modules": true,
+      "dist": true,
+      "build": true
+    }
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": []
+  }
+}

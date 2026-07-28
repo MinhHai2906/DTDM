@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=yes"
+    />
+    <title>PhoneStore - Lịch Sử Mua Hàng</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/order-history.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      .confirm-backdrop {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(15, 23, 42, 0.75);
+        z-index: 9999;
+      }
+
+      .confirm-backdrop.show {
+        display: flex;
+      }
+
+      .confirm-modal {
+        width: min(520px, calc(100% - 40px));
+        background: #ffffff;
+        border-radius: 24px;
+        padding: 28px 24px;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.16);
+        text-align: center;
+        color: #111827;
+      }
+
+      .confirm-modal h3 {
+        margin: 0 0 12px;
+        font-size: 1.35rem;
+      }
+
+      .confirm-modal p {
+        margin: 0 0 24px;
+        color: #475569;
+        line-height: 1.7;
+      }
+
+      .confirm-actions {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .confirm-actions button {
+        min-width: 120px;
+        padding: 12px 18px;
+        border-radius: 999px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        transition: transform 0.2s ease;
+      }
+
+      .confirm-actions button:hover {
+        transform: translateY(-1px);
+      }
+
+      .confirm-actions .cancel {
+        background: #f3f4f6;
+        color: #111827;
+      }
+
+      .confirm-actions .confirm {
+        background: linear-gradient(135deg, #f8d569, #d19c31);
+        color: #111827;
+        box-shadow: 0 8px 16px rgba(209, 156, 49, 0.25);
+      }
+
+      .confirm-actions .confirm:hover {
+        background: linear-gradient(135deg, #fadd8a, #c78725);
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- HEADER -->
+    <header>
+      <div class="header-container">
+        <div class="logo" onclick="location.href='index.html'">
+          <h1>📱 PhoneStore</h1>
+        </div>
+        <div class="search-bar">
+          <input
+            type="text"
+            placeholder="Tìm kiếm sản phẩm..."
+            id="searchInput"
+          />
+          <button id="searchBtn"><i class="fas fa-search"></i></button>
+        </div>
+        <div class="nav-menu">
+          <a href="index.html">Trang chủ</a>
+          <a href="products.html">Sản phẩm</a>
+          <a href="promotion.html">Khuyến mãi</a>
+          <a href="cart.html">
+            <div class="cart-icon">
+              <i class="fas fa-shopping-cart"></i>
+              <span class="cart-count" id="cartCount">0</span>
+            </div>
+          </a>
+          <a href="#" id="profileLink"><i class="fas fa-user"></i></a>
+        </div>
+      </div>
+    </header>
+
+    <!-- BREADCRUMB -->
+    <div class="breadcrumb-bar">
+      <div class="breadcrumb-inner">
+        <a href="index.html"><i class="fas fa-home"></i> Trang chủ</a>
+        <i class="fas fa-chevron-right sep"></i>
+        <a href="#">Tài khoản</a>
+        <i class="fas fa-chevron-right sep"></i>
+        <span>Lịch sử mua hàng</span>
+      </div>
+    </div>
+
+    <!-- PAGE WRAPPER -->
+    <div class="oh-wrapper">
+      <!-- LEFT: Profile sidebar -->
+      <aside class="profile-sidebar">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar">
+            <img
+              id="sidebarAvatar"
+              src="https://ui-avatars.com/api/?name=Nguyen+Van+A&background=b7791f&color=fff&size=80&rounded=true"
+              alt="Avatar"
+            />
+            <div class="sidebar-avatar-badge"><i class="fas fa-check"></i></div>
+          </div>
+          <div class="sidebar-user-name" id="sidebarName"></div>
+          <div class="sidebar-user-email" id="sidebarEmail"></div>
+        </div>
+        <nav class="sidebar-nav-profile">
+          <a href="profile.html" class="snav-link"
+            ><i class="fas fa-user-circle"></i> Thông tin cá nhân</a
+          >
+          <a href="order-history.html" class="snav-link active"
+            ><i class="fas fa-receipt"></i> Lịch sử mua hàng</a
+          >
+          <a href="#" class="snav-link logout" id="logoutBtn"
+            ><i class="fas fa-sign-out-alt"></i> Đăng xuất</a
+          >
+        </nav>
+      </aside>
+
+      <!-- RIGHT: Main content -->
+      <main class="oh-main">
+        <!-- Top bar -->
+        <div class="oh-topbar">
+          <div class="oh-topbar-left">
+            <h2 class="oh-page-title">
+              <i class="fas fa-receipt"></i> Lịch Sử Mua Hàng
+            </h2>
+            <span class="oh-total-badge" id="ohTotalBadge">0 đơn hàng</span>
+          </div>
+        </div>
+
+        <!-- Status filter tabs -->
+        <div class="oh-tabs" id="ohTabs">
+          <button class="oh-tab active" data-status="">
+            <i class="fas fa-list"></i> Tất cả
+          </button>
+          <button class="oh-tab" data-status="Chờ xác nhận">
+            <i class="fas fa-clock"></i> Chờ xác nhận
+          </button>
+          <button class="oh-tab" data-status="Đã xác nhận">
+            <i class="fas fa-circle-check"></i> Đã xác nhận
+          </button>
+          <button class="oh-tab" data-status="Đang giao hàng">
+            <i class="fas fa-truck"></i> Đang giao hàng
+          </button>
+          <button class="oh-tab" data-status="Đã giao hàng thành công">
+            <i class="fas fa-truck"></i> Đã giao hàng thành công
+          </button>
+          <button class="oh-tab" data-status="Đã hủy">
+            <i class="fas fa-times-circle"></i> Đã hủy
+          </button>
+        </div>
+
+        <!-- Order list -->
+        <div class="oh-list" id="ohList"></div>
+
+        <!-- Empty state -->
+        <div class="oh-empty" id="ohEmpty">
+          <div class="oh-empty-icon"><i class="fas fa-shopping-bag"></i></div>
+          <h3>Không tìm thấy đơn hàng</h3>
+          <p>Bạn chưa có đơn hàng nào trong mục này</p>
+          <a href="products.html" class="btn-shop-now"
+            ><i class="fas fa-shopping-cart"></i> Mua sắm ngay</a
+          >
+        </div>
+
+        <!-- Pagination -->
+        <div class="oh-pagination" id="ohPagination"></div>
+      </main>
+    </div>
+
+    <!-- MODAL: CHI TIẾT ĐƠN HÀNG -->
+    <div class="modal-backdrop" id="modalBackdrop">
+      <div class="order-modal" id="orderModal">
+        <div class="modal-header">
+          <div class="modal-header-left">
+            <h3 id="modalOrderId">Chi tiết đơn hàng</h3>
+            <span class="modal-date" id="modalDate"></span>
+          </div>
+          <button class="modal-close-btn" id="modalClose">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body" id="modalBody">
+          <div class="modal-section">
+            <div class="modal-section-title">
+              <i class="fas fa-route"></i> Trạng thái đơn hàng
+            </div>
+            <div class="timeline-wrap" id="timelineWrap"></div>
+          </div>
+          <div class="modal-section">
+            <div class="modal-section-title">
+              <i class="fas fa-box"></i> Sản phẩm đặt hàng
+            </div>
+            <div class="modal-products" id="modalProducts"></div>
+          </div>
+          <div class="modal-info-grid">
+            <div class="modal-info-card">
+              <div class="modal-info-title">
+                <i class="fas fa-map-marker-alt"></i> Địa chỉ giao hàng
+              </div>
+              <div class="modal-info-body" id="modalAddress"></div>
+            </div>
+            <div class="modal-info-card">
+              <div class="modal-info-title">
+                <i class="fas fa-credit-card"></i> Thanh toán
+              </div>
+              <div class="modal-info-body" id="modalPayment"></div>
+            </div>
+          </div>
+          <div class="modal-summary">
+            <div class="summary-row">
+              <span>Tạm tính</span><span id="sumSubtotal"></span>
+            </div>
+            <div class="summary-row">
+              <span>Phí vận chuyển</span><span id="sumShipping"></span>
+            </div>
+            <div
+              class="summary-row discount-row"
+              id="discountRow"
+              style="display: none"
+            >
+              <span>Giảm giá</span><span id="sumDiscount"></span>
+            </div>
+            <div class="summary-row total-row">
+              <span>Tổng cộng</span><span id="sumTotal"></span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" id="modalFooter"></div>
+      </div>
+    </div>
+
+    <!-- MODAL: XÁC NHẬN HỦY ĐƠN -->
+    <div class="modal-backdrop" id="cancelBackdrop">
+      <div class="cancel-modal">
+        <div class="cancel-icon">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h3>Xác nhận hủy đơn hàng</h3>
+        <p id="cancelText">Bạn có chắc muốn hủy đơn hàng <strong></strong>?</p>
+        <div class="cancel-reason-wrap">
+          <label>Lý do hủy đơn:</label>
+          <select id="cancelReason" class="cancel-select">
+            <option value="">-- Chọn lý do --</option>
+            <option>Tôi muốn thay đổi địa chỉ giao hàng</option>
+            <option>Tôi muốn thay đổi sản phẩm</option>
+            <option>Tôi tìm được giá rẻ hơn</option>
+            <option>Đặt nhầm sản phẩm</option>
+            <option>Thay đổi phương thức thanh toán</option>
+            <option>Lý do khác</option>
+          </select>
+        </div>
+        <div class="cancel-actions">
+          <button class="btn-cancel-no" id="cancelNo">Giữ đơn hàng</button>
+          <button class="btn-cancel-yes" id="cancelYes">
+            <i class="fas fa-times-circle"></i> Hủy đơn
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="oh-toast-container" id="toastContainer"></div>
+
+    <div class="confirm-backdrop" id="logoutConfirmBackdrop">
+      <div class="confirm-modal">
+        <h3>Xác nhận đăng xuất</h3>
+        <p>Bạn có chắc muốn đăng xuất không? Chọn “Có” để thoát tài khoản.</p>
+        <div class="confirm-actions">
+          <button type="button" class="cancel" id="logoutCancelBtn">
+            Không
+          </button>
+          <button type="button" class="confirm" id="logoutConfirmBtn">
+            Có, đăng xuất
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BACK TO TOP -->
+    <button id="backToTop" class="back-to-top">
+      <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <!-- FOOTER -->
+    <footer>
+      <div class="footer-container">
+        <div class="footer-section">
+          <h3>PhoneStore</h3>
+          <p>Hệ thống bán lẻ điện thoại chính hãng</p>
+          <p>�️ 02 Võ Oanh , Phường Thạnh Mỹ Tây Quận Bình Thạnh, TP. Hồ Chí Minh</p>
+          <p>📞 1900 1234</p>
+          <p>✉️ support@phonestore.vn</p>
+        </div>
+        <div class="footer-section">
+          <h3>Về chúng tôi</h3>
+          <a href="#">Giới thiệu</a>
+          <a href="#">Tuyển dụng</a>
+          <a href="#">Chính sách bảo mật</a>
+          <a href="#">Điều khoản sử dụng</a>
+        </div>
+        <div class="footer-section">
+          <h3>Hỗ trợ khách hàng</h3>
+          <a href="#">Hướng dẫn mua hàng</a>
+          <a href="#">Phương thức thanh toán</a>
+          <a href="#">Chính sách đổi trả</a>
+          <a href="contact.html">Liên hệ</a>
+          <a href="warranty.html">Chính sách bảo hành</a>
+        </div>
+        <div class="footer-right">
+          <div class="footer-maps">
+            <iframe
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.4269564823567!2d106.66405!3d10.7773!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x317527587ce61111%3A0xabf66146b5a5e8a!2s740%20S%C6%B0%20V%E1%BA%A1n%20H%E1%BA%A1nh%2C%20District%2010%2C%20Ho%20Chi%20Minh%20City!5e0!3m2!1sen!2s!4v1234567890"
+              width="100%"
+              height="300"
+              style="border: 0; border-radius: 12px"
+              allowfullscreen=""
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+            ></iframe>
+          </div>
+
+          <div class="footer-section footer-social-section">
+            <h3>Kết nối với chúng tôi</h3>
+            <div class="social-links">
+              <a href="#"><i class="fab fa-facebook-f"></i></a>
+              <a href="#"><i class="fab fa-instagram"></i></a>
+              <a href="#"><i class="fab fa-youtube"></i></a>
+              <a href="#"><i class="fab fa-tiktok"></i></a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2026 PhoneStore. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script defer src="js/order-history.js"></script>
+  </body>
+</html>

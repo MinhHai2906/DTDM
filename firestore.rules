@@ -1,0 +1,114 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================
+    // AUTHENTICATION HELPERS
+    // ============================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+             (
+               request.auth.token.admin == true ||
+               request.auth.token.role == 'admin' ||
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+             );
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // ============================================
+    // USERS COLLECTION
+    // ============================================
+    match /users/{userId} {
+      // Người dùng chỉ có thể đọc/viết dữ liệu của chính họ
+      allow get: if isOwner(userId);
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isAdmin() || isOwner(userId);
+      allow list: if isAdmin();
+    }
+
+    // ============================================
+    // PRODUCTS COLLECTION
+    // ============================================
+    match /products/{productId} {
+      // Tất cả mọi người có thể đọc sản phẩm
+      allow get: if true;
+      allow list: if true;
+      
+      // Chỉ admin có thể tạo/sửa/xóa sản phẩm
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ============================================
+    // ORDERS COLLECTION
+    // ============================================
+    match /orders/{orderId} {
+      // Người dùng chỉ có thể xem đơn hàng của chính họ
+      allow get, list: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      
+      // Người dùng có thể tạo đơn hàng cho chính họ
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // Người dùng có thể cập nhật đơn hàng của mình, admin có thể xử lý trạng thái
+      allow update: if isAdmin() || isOwner(resource.data.userId);
+      
+      // Chủ đơn hoặc admin có thể xóa đơn hàng
+      allow delete: if isAdmin() || isOwner(resource.data.userId);
+    }
+
+    // ============================================
+    // CATEGORIES COLLECTION
+    // ============================================
+    match /categories/{categoryId} {
+      // Tất cả mọi người có thể đọc danh mục
+      allow get, list: if true;
+      
+      // Chỉ admin có thể tạo/sửa/xóa danh mục
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ============================================
+    // REVIEWS AND RATINGS
+    // ============================================
+    match /reviews/{reviewId} {
+      // Tất cả mọi người có thể đọc review
+      allow get, list: if true;
+      
+      // Người dùng xác thực có thể tạo review cho chính họ
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // Người dùng có thể cập nhật review của chính họ
+      allow update: if isOwner(resource.data.userId);
+      
+      // Chỉ admin hoặc chủ review có thể xóa
+      allow delete: if isAdmin() || isOwner(resource.data.userId);
+    }
+
+    // ============================================
+    // PROMOTIONS COLLECTION
+    // ============================================
+    match /promotions/{promoId} {
+      // User cần đọc mã khuyến mãi ở trang public
+      allow get, list: if true;
+
+      // Chỉ admin được tạo/sửa/xóa khuyến mãi
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ============================================
+    // DEFAULT DENY
+    // ============================================
+    // Từ chối tất cả các yêu cầu không khớp với các rule ở trên
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

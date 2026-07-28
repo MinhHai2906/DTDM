@@ -1,0 +1,212 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+    background: #0f172a;
+    color: white;
+}
+
+.sidebar {
+    width: 220px;
+    min-height: 100vh;
+    background: #1e293b;
+    padding: 20px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
+.sidebar h2 {
+    margin: 0 0 20px;
+    font-size: 22px;
+    color: #f1f5f9;
+}
+
+.sidebar a {
+    display: block;
+    padding: 10px 12px;
+    color: white;
+    text-decoration: none;
+    margin-bottom: 8px;
+    border-radius: 5px;
+    font-size: 15px;
+    transition: background 0.3s;
+}
+
+.sidebar a:hover {
+    background: #334155;
+}
+
+.sidebar a.active {
+    background: #2563eb;
+}
+
+.main {
+    flex: 1;
+    padding: 20px;
+    overflow-x: auto;
+}
+
+.cards {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.card {
+    background: #111827;
+    border: 1px solid #334155;
+    padding: 20px;
+    border-radius: 16px;
+}
+
+/* ========== RESPONSIVE DESIGN ========== */
+
+/* Tablet - 768px and below */
+@media (max-width: 900px) {
+    body {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        min-height: auto;
+        padding: 15px;
+    }
+
+    .sidebar h2 {
+        font-size: 18px;
+        margin-bottom: 15px;
+    }
+
+    .sidebar a {
+        padding: 8px 10px;
+        font-size: 13px;
+        margin-bottom: 6px;
+    }
+
+    .main {
+        padding: 15px;
+        overflow-x: auto;
+    }
+
+    .cards {
+        gap: 15px;
+    }
+
+    .card {
+        padding: 15px;
+        border-radius: 12px;
+    }
+}
+
+/* Mobile - 768px and below */
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        min-height: auto;
+        padding: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .sidebar h2 {
+        font-size: 16px;
+        margin: 0;
+        flex-basis: 100%;
+    }
+
+    .sidebar a {
+        flex: 1;
+        min-width: 80px;
+        padding: 8px 8px;
+        font-size: 12px;
+        margin-bottom: 0;
+        text-align: center;
+    }
+
+    .main {
+        padding: 12px;
+        overflow-x: auto;
+    }
+
+    .cards {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .card {
+        width: 100%;
+        padding: 12px;
+        font-size: 13px;
+    }
+
+    table {
+        font-size: 12px;
+    }
+
+    input, select, textarea, button {
+        font-size: 16px !important;
+        padding: 10px 8px !important;
+    }
+}
+
+/* Small Mobile - 480px and below */
+@media (max-width: 480px) {
+    .sidebar {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .sidebar h2 {
+        font-size: 14px;
+    }
+
+    .sidebar a {
+        width: 100%;
+        min-width: unset;
+        padding: 10px 12px;
+        font-size: 13px;
+        text-align: left;
+    }
+
+    .main {
+        padding: 10px;
+    }
+
+    .cards {
+        gap: 10px;
+    }
+
+    .card {
+        padding: 10px;
+        font-size: 12px;
+        word-break: break-word;
+    }
+
+    h1, h2, h3 {
+        font-size: 16px;
+    }
+
+    table {
+        font-size: 11px;
+        overflow-x: auto;
+        display: block;
+    }
+
+    th, td {
+        padding: 8px 4px;
+    }
+
+    input, select, textarea, button {
+        width: 100%;
+        font-size: 16px !important;
+        padding: 10px 8px !important;
+        box-sizing: border-box;
+    }
+}

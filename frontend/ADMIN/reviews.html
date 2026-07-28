@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quản lý bình luận</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <style>
+      .page-title {
+        margin: 0 0 8px;
+        color: #f8fafc;
+      }
+
+      .page-subtitle {
+        margin: 0 0 18px;
+        color: #94a3b8;
+      }
+
+      .card {
+        background: #111827;
+        border: 1px solid #334155;
+        border-radius: 16px;
+        padding: 18px;
+      }
+
+      .status-line {
+        min-height: 18px;
+        font-size: 13px;
+        color: #93c5fd;
+        margin-bottom: 10px;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        min-width: 980px;
+        border-collapse: collapse;
+        color: #f8fafc;
+      }
+
+      th,
+      td {
+        border: 1px solid #334155;
+        padding: 10px 8px;
+        text-align: center;
+        vertical-align: top;
+        font-size: 14px;
+      }
+
+      th {
+        background: #1e293b;
+        color: #e2e8f0;
+        white-space: nowrap;
+      }
+
+      .user-cell,
+      .review-cell {
+        text-align: left;
+      }
+
+      .user-name {
+        display: block;
+        color: #f8fafc;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+
+      .user-account {
+        display: block;
+        color: #94a3b8;
+        font-size: 12px;
+      }
+
+      .review-cell {
+        min-width: 320px;
+        line-height: 1.5;
+      }
+
+      .product-cell {
+        min-width: 180px;
+        text-align: left;
+      }
+
+      .date-cell {
+        white-space: nowrap;
+      }
+
+      .stars {
+        color: #facc15;
+        letter-spacing: 1px;
+        white-space: nowrap;
+      }
+
+      .delete-btn {
+        border: none;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 13px;
+        background: #dc2626;
+        color: #fff;
+        cursor: pointer;
+      }
+
+      .delete-btn:hover {
+        background: #b91c1c;
+      }
+
+      .delete-btn:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+
+      .empty-row td {
+        color: #94a3b8;
+        padding: 28px 12px;
+      }
+
+      .updated-at {
+        font-size: 12px;
+        color: #94a3b8;
+        margin-top: 8px;
+      }
+
+      .toast {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        z-index: 9999;
+        padding: 12px 14px;
+        border-radius: 10px;
+        color: #fff;
+        background: #16a34a;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        opacity: 0;
+        transform: translateY(10px);
+        transition:
+          opacity 0.25s ease,
+          transform 0.25s ease;
+        pointer-events: none;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .toast.error {
+        background: #dc2626;
+      }
+
+      .confirm-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.72);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9998;
+      }
+
+      .confirm-backdrop.active {
+        display: flex;
+      }
+
+      .confirm-modal {
+        width: min(440px, calc(100% - 36px));
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      }
+
+      .confirm-modal h3 {
+        margin: 0 0 8px;
+        color: #f8fafc;
+        font-size: 18px;
+      }
+
+      .confirm-modal p {
+        margin: 0 0 18px;
+        color: #94a3b8;
+        line-height: 1.5;
+      }
+
+      .confirm-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+      }
+
+      .confirm-actions button {
+        border: none;
+        border-radius: 8px;
+        padding: 9px 12px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+
+      .confirm-cancel {
+        background: #334155;
+        color: #e2e8f0;
+      }
+
+      .confirm-accept {
+        background: #dc2626;
+        color: #fff;
+      }
+
+      @media (max-width: 900px) {
+        table {
+          min-width: 860px;
+        }
+      }
+    </style>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  </head>
+  <body>
+    <div class="sidebar">
+      <h2>MobiStore Admin</h2>
+      <a href="admin.html">Dashboard</a>
+      <a href="products.html">Sản phẩm</a>
+      <a href="orders.html">Đơn hàng</a>
+      <a href="users.html">Người dùng</a>
+      <a class="active" href="reviews.html">Bình luận</a>
+    </div>
+
+    <div class="main">
+      <h1 class="page-title">Quản lý bình luận sản phẩm</h1>
+      <p class="page-subtitle">
+        Theo dõi tất cả bình luận đánh giá và xóa nội dung không phù hợp.
+      </p>
+
+      <div class="card">
+        <div id="statusLine" class="status-line">
+          Đang tải bình luận từ Firebase...
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>STT</th>
+                <th>Tài khoản user</th>
+                <th>Sản phẩm</th>
+                <th>Ngày gửi</th>
+                <th>Số sao</th>
+                <th>Nội dung bình luận</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="reviewsBody">
+              <tr class="empty-row">
+                <td colspan="7">Đang tải dữ liệu...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="updatedAt" class="updated-at"></div>
+      </div>
+    </div>
+
+    <div
+      id="confirmBackdrop"
+      class="confirm-backdrop"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="confirm-modal">
+        <h3>Xác nhận xóa bình luận</h3>
+        <p>Bạn có muốn xóa bình luận này không?</p>
+        <div class="confirm-actions">
+          <button id="confirmCancel" class="confirm-cancel">Hủy</button>
+          <button id="confirmAccept" class="confirm-accept">Xóa</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyDk1XTVn68McS02jMIXnyQ3bqtpLF3L1XQ",
+        authDomain: "web-dienthoai0-dtdm.firebaseapp.com",
+        projectId: "web-dienthoai0-dtdm",
+        storageBucket: "web-dienthoai0-dtdm.firebasestorage.app",
+        messagingSenderId: "102142538462",
+        appId: "1:102142538462:web:8c2c6c4637a54304ef484f",
+      };
+
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+
+      const statusLine = document.getElementById("statusLine");
+      const updatedAtText = document.getElementById("updatedAt");
+      const reviewsBody = document.getElementById("reviewsBody");
+      const confirmBackdrop = document.getElementById("confirmBackdrop");
+      const confirmCancel = document.getElementById("confirmCancel");
+      const confirmAccept = document.getElementById("confirmAccept");
+      const userMapByUid = new Map();
+      let pendingDeleteReviewId = null;
+      let pendingDeleteButton = null;
+
+      function showStatus(message, isError = false) {
+        statusLine.textContent = message;
+        statusLine.style.color = isError ? "#fca5a5" : "#93c5fd";
+      }
+
+      function showToast(message, isError = false) {
+        const oldToast = document.querySelector(".toast");
+        if (oldToast) oldToast.remove();
+
+        const toast = document.createElement("div");
+        toast.className = "toast" + (isError ? " error" : "");
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        requestAnimationFrame(() => toast.classList.add("show"));
+        setTimeout(() => {
+          toast.classList.remove("show");
+          setTimeout(() => toast.remove(), 250);
+        }, 2400);
+      }
+
+      function openDeleteConfirm(reviewId, button) {
+        pendingDeleteReviewId = reviewId;
+        pendingDeleteButton = button;
+        confirmBackdrop.classList.add("active");
+      }
+
+      function closeDeleteConfirm() {
+        confirmBackdrop.classList.remove("active");
+        pendingDeleteReviewId = null;
+        pendingDeleteButton = null;
+      }
+
+      function getPermissionErrorMessage(error, fallback) {
+        if (error?.code === "permission-denied") {
+          return "Bạn không có quyền đọc bình luận. Hãy đăng nhập tài khoản admin.";
+        }
+        return fallback;
+      }
+
+      function toDateObject(raw) {
+        if (!raw) return null;
+        if (typeof raw?.toDate === "function") return raw.toDate();
+        if (typeof raw === "string") {
+          const parsed = new Date(raw);
+          if (!Number.isNaN(parsed.getTime())) return parsed;
+        }
+        return null;
+      }
+
+      function fmtDate(raw) {
+        const dateObj = toDateObject(raw);
+        if (!dateObj) return "-";
+
+        return dateObj.toLocaleDateString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+      }
+
+      function renderStars(star) {
+        const value = Math.min(5, Math.max(0, Number(star) || 0));
+        const filled = "★".repeat(value);
+        const empty = "☆".repeat(5 - value);
+        return `${value}/5 ${filled}${empty}`;
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function getSenderDisplay(review) {
+        const uid = review.userId || "";
+        const userProfile = uid ? userMapByUid.get(uid) : null;
+
+        const name =
+          review.customer ||
+          review.userName ||
+          review.displayName ||
+          userProfile?.displayName ||
+          userProfile?.name ||
+          "Ẩn danh";
+
+        const account =
+          review.email ||
+          review.username ||
+          review.userAccount ||
+          userProfile?.email ||
+          uid ||
+          "Không có tài khoản";
+
+        return { name, account };
+      }
+
+      async function loadUsersDirectory() {
+        userMapByUid.clear();
+
+        try {
+          const snapshot = await db.collection("users").get();
+          snapshot.forEach((doc) => {
+            const data = doc.data() || {};
+            const uid = data.uid || doc.id;
+            if (!uid) return;
+            userMapByUid.set(uid, data);
+          });
+        } catch (error) {
+          console.warn(
+            "Không tải được danh sách users để map tài khoản:",
+            error,
+          );
+        }
+      }
+
+      function sortReviews(list) {
+        return [...list].sort((a, b) => {
+          const dateA = toDateObject(a.createdAt || a.date)?.getTime() || 0;
+          const dateB = toDateObject(b.createdAt || b.date)?.getTime() || 0;
+          return dateB - dateA;
+        });
+      }
+
+      function renderReviews(reviews) {
+        if (!reviews.length) {
+          reviewsBody.innerHTML =
+            '<tr class="empty-row"><td colspan="7">Chưa có bình luận nào.</td></tr>';
+          return;
+        }
+
+        reviewsBody.innerHTML = reviews
+          .map((review, index) => {
+            const sender = getSenderDisplay(review);
+            const senderName = escapeHtml(sender.name);
+            const senderAccount = escapeHtml(sender.account);
+            const productName = escapeHtml(
+              review.product || review.productName || "-",
+            );
+            const dateText = escapeHtml(
+              fmtDate(review.createdAt || review.date),
+            );
+            const starText = escapeHtml(renderStars(review.star));
+            const content = escapeHtml(review.content || "(Không có nội dung)");
+
+            return `
+              <tr>
+                <td>${index + 1}</td>
+                <td class="user-cell">
+                  <span class="user-name">${senderName}</span>
+                  <span class="user-account">${senderAccount}</span>
+                </td>
+                <td class="product-cell">${productName}</td>
+                <td class="date-cell">${dateText}</td>
+                <td class="stars">${starText}</td>
+                <td class="review-cell">${content}</td>
+                <td>
+                  <button class="delete-btn" data-id="${review.id}">
+                    <i class="fa-solid fa-trash"></i> Xóa
+                  </button>
+                </td>
+              </tr>
+            `;
+          })
+          .join("");
+
+        document.querySelectorAll(".delete-btn").forEach((button) => {
+          button.addEventListener("click", async () => {
+            const reviewId = button.dataset.id;
+            if (!reviewId) return;
+
+            openDeleteConfirm(reviewId, button);
+          });
+        });
+      }
+
+      confirmCancel.addEventListener("click", () => {
+        closeDeleteConfirm();
+      });
+
+      confirmBackdrop.addEventListener("click", (event) => {
+        if (event.target === confirmBackdrop) {
+          closeDeleteConfirm();
+        }
+      });
+
+      confirmAccept.addEventListener("click", async () => {
+        if (!pendingDeleteReviewId) {
+          closeDeleteConfirm();
+          return;
+        }
+
+        const reviewId = pendingDeleteReviewId;
+        const activeButton = pendingDeleteButton;
+        closeDeleteConfirm();
+
+        if (activeButton) {
+          activeButton.disabled = true;
+        }
+
+        try {
+          await db.collection("reviews").doc(reviewId).delete();
+          showToast("Đã xóa bình luận thành công");
+        } catch (error) {
+          console.error("Xóa bình luận thất bại:", error);
+          showToast("Không thể xóa bình luận", true);
+          if (activeButton) {
+            activeButton.disabled = false;
+          }
+        }
+      });
+
+      function subscribeReviewsRealtime() {
+        showStatus("Đang đồng bộ bình luận từ Firestore realtime...");
+
+        db.collection("reviews").onSnapshot(
+          (snapshot) => {
+            const allReviews = snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            }));
+
+            const sortedReviews = sortReviews(allReviews);
+            renderReviews(sortedReviews);
+
+            const nowText = new Date().toLocaleString("vi-VN");
+            updatedAtText.textContent = `Đã đồng bộ lúc: ${nowText} | Tổng bình luận: ${sortedReviews.length}`;
+            showStatus(`Đang hiển thị ${sortedReviews.length} bình luận.`);
+          },
+          (error) => {
+            console.error("Không thể tải bình luận:", error);
+            showStatus(
+              getPermissionErrorMessage(
+                error,
+                "Lỗi khi kết nối Firestore. Vui lòng kiểm tra quyền đọc collection reviews.",
+              ),
+              true,
+            );
+            reviewsBody.innerHTML =
+              '<tr class="empty-row"><td colspan="7">Không thể tải dữ liệu bình luận.</td></tr>';
+          },
+        );
+      }
+
+      async function ensureAdminAccess(user) {
+        if (!user) return false;
+
+        const idTokenResult = await user.getIdTokenResult(true);
+        if (
+          idTokenResult?.claims?.admin === true ||
+          idTokenResult?.claims?.role === "admin"
+        ) {
+          return true;
+        }
+
+        try {
+          const userDoc = await db.collection("users").doc(user.uid).get();
+          return userDoc.exists && userDoc.data()?.role === "admin";
+        } catch {
+          return false;
+        }
+      }
+
+      auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+          showStatus("Bạn cần đăng nhập admin trước khi xem bình luận.", true);
+          reviewsBody.innerHTML =
+            '<tr class="empty-row"><td colspan="7">Bạn chưa đăng nhập admin.</td></tr>';
+          setTimeout(() => {
+            window.location.href = "login.html";
+          }, 900);
+          return;
+        }
+
+        showStatus("Đang kiểm tra quyền admin...");
+
+        let isAdmin = false;
+        try {
+          isAdmin = await ensureAdminAccess(user);
+        } catch (error) {
+          console.error("Lỗi kiểm tra quyền admin:", error);
+        }
+
+        if (!isAdmin) {
+          showStatus(
+            "Tài khoản này không có quyền admin để xem bình luận.",
+            true,
+          );
+          reviewsBody.innerHTML =
+            '<tr class="empty-row"><td colspan="7">Tài khoản hiện tại không có quyền admin.</td></tr>';
+          showToast("Tài khoản không có quyền admin", true);
+          return;
+        }
+
+        await loadUsersDirectory();
+        subscribeReviewsRealtime();
+      });
+    </script>
+  </body>
+</html>

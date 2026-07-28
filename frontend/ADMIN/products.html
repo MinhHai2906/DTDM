@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin - Quản lý sản phẩm</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        display: flex;
+        background: #0f172a;
+        color: white;
+      }
+
+      .sidebar {
+        width: 220px;
+        min-height: 100vh;
+        background: #1e293b;
+        padding: 20px;
+        box-sizing: border-box;
+        flex-shrink: 0;
+      }
+
+      .sidebar h2 {
+        margin-bottom: 20px;
+        font-size: 22px;
+        color: #f1f5f9;
+      }
+
+      .sidebar a {
+        display: block;
+        padding: 10px 12px;
+        color: white;
+        text-decoration: none;
+        margin-bottom: 8px;
+        border-radius: 5px;
+        font-size: 15px;
+        transition: background 0.3s;
+      }
+
+      .sidebar a:hover {
+        background: #334155;
+      }
+      .sidebar a.active {
+        background: #2563eb;
+      }
+
+      .main {
+        flex: 1;
+        padding: 20px;
+        overflow-x: auto;
+      }
+
+      .card {
+        background: #111827;
+        border: 1px solid #334155;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-sizing: border-box;
+      }
+
+      .card h2 {
+        margin: 0 0 8px;
+        color: #f8fafc;
+      }
+
+      .card p {
+        margin: 0 0 18px;
+        color: #94a3b8;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .form-group.full {
+        grid-column: 1 / -1;
+      }
+
+      .form-group label {
+        display: block;
+        font-size: 13px;
+        color: #cbd5e1;
+        margin-bottom: 6px;
+      }
+
+      .main input,
+      .main select,
+      .main textarea,
+      .main button {
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #334155;
+        font-size: 14px;
+        box-sizing: border-box;
+      }
+
+      .main input,
+      .main select,
+      .main textarea {
+        width: 100%;
+        background: #0f172a;
+        color: #f8fafc;
+      }
+
+      .main textarea {
+        min-height: 120px;
+        resize: vertical;
+        line-height: 1.45;
+        font-family: Arial, sans-serif;
+      }
+
+      .main input::placeholder,
+      .main textarea::placeholder {
+        color: #64748b;
+      }
+
+      .action-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 18px;
+        flex-wrap: wrap;
+      }
+
+      .main button {
+        background: #2563eb;
+        color: white;
+        cursor: pointer;
+        transition: background 0.3s;
+        border: none;
+      }
+
+      .main button:hover {
+        background: #1d4ed8;
+      }
+
+      .main button.secondary {
+        background: #334155;
+      }
+
+      .main button.secondary:hover {
+        background: #475569;
+      }
+
+      .status-line {
+        font-size: 13px;
+        color: #93c5fd;
+        min-height: 18px;
+        margin-top: 10px;
+      }
+
+      table {
+        border-collapse: collapse;
+        margin-top: 16px;
+        color: white;
+        table-layout: auto;
+        width: 100%;
+      }
+
+      th,
+      td {
+        border: 1px solid #334155;
+        padding: 10px 8px;
+        text-align: center;
+        vertical-align: middle;
+      }
+
+      th {
+        background: #1e293b;
+        font-weight: bold;
+      }
+
+      td img {
+        border-radius: 5px;
+        max-width: 60px;
+        max-height: 60px;
+      }
+
+      .product-name-cell {
+        text-align: left;
+        min-width: 240px;
+      }
+
+      .product-name-cell strong {
+        display: block;
+        margin: 6px 0 4px;
+      }
+
+      .product-name-cell small {
+        color: #94a3b8;
+        display: block;
+      }
+
+      .table-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+      }
+
+      @media (max-width: 1100px) {
+        .form-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 900px) {
+        body {
+          flex-direction: column;
+        }
+
+        .sidebar {
+          width: 100%;
+          min-height: auto;
+        }
+
+        .main {
+          padding: 15px;
+        }
+
+        .form-grid {
+          grid-template-columns: 1fr;
+        }
+
+        table,
+        th,
+        td {
+          font-size: 13px;
+        }
+      }
+    </style>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  </head>
+  <body>
+    <div class="sidebar">
+      <h2>MobiStore Admin</h2>
+      <a href="admin.html">Dashboard</a>
+      <a class="active" href="products.html">Sản phẩm</a>
+      <a href="orders.html">Đơn hàng</a>
+      <a href="users.html">Người dùng</a>
+      <a href="reviews.html">Bình luận</a>
+    </div>
+
+    <div class="main">
+      <div class="card">
+        <h2 id="formTitle">Thêm sản phẩm</h2>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="name">Tên sản phẩm</label>
+            <input
+              type="text"
+              id="name"
+              placeholder="Ví dụ: iPhone 15 Pro Max"
+            />
+          </div>
+          <div class="form-group">
+            <label for="brand">Thương hiệu</label>
+            <input type="text" id="brand" placeholder="Apple, Samsung..." />
+          </div>
+          <div class="form-group">
+            <label for="image">Ảnh chính</label>
+            <input type="text" id="image" placeholder="Link ảnh" />
+          </div>
+
+          <div class="form-group">
+            <label for="category">Danh mục</label>
+            <select id="category">
+              <option value="phone">Điện thoại</option>
+              <option value="headphone">Tai nghe</option>
+              <option value="charger">Sạc</option>
+              <option value="tablet">Máy tính bảng</option>
+              <option value="laptop">Laptop</option>
+              <option value="watch">Đồng hồ thông minh</option>
+              <option value="speaker">Loa</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="categoryName">Tên hiển thị danh mục</label>
+            <input
+              type="text"
+              id="categoryName"
+              placeholder="Ví dụ: Điện thoại"
+            />
+          </div>
+          <div class="form-group">
+            <label for="discount">Giảm giá (%)</label>
+            <input type="number" id="discount" placeholder="0" />
+          </div>
+
+          <div class="form-group">
+            <label for="price">Giá bán</label>
+            <input type="number" id="price" placeholder="29990000" />
+          </div>
+          <div class="form-group">
+            <label for="reviewCount">Số lượng đánh giá</label>
+            <input type="number" id="reviewCount" placeholder="0" />
+          </div>
+
+          <div class="form-group">
+            <label for="rating">Điểm đánh giá</label>
+            <input
+              type="number"
+              id="rating"
+              step="0.1"
+              min="0"
+              max="5"
+              placeholder="4.5"
+            />
+          </div>
+          <div class="form-group full">
+            <label for="desc">Mô tả sản phẩm</label>
+            <textarea id="desc" placeholder="Nhập mô tả sản phẩm..."></textarea>
+          </div>
+          <div class="form-group full">
+            <label for="specs">Thông số kỹ thuật</label>
+            <textarea
+              id="specs"
+              placeholder="Chip: A17 Pro&#10;RAM: 8GB&#10;ROM: 256GB&#10;Màn hình: 6.7 inch"
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button id="submitButton" onclick="saveProduct()">
+            Lưu sản phẩm
+          </button>
+          <button class="secondary" type="button" onclick="resetForm()">
+            Làm mới form
+          </button>
+        </div>
+        <div class="status-line" id="formStatus"></div>
+      </div>
+
+      <div class="card">
+        <h2>Danh sách sản phẩm</h2>
+        <p>Sản phẩm mới nhất sẽ hiển thị đầu danh sách.</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>STT</th>
+              <th>Sản phẩm</th>
+              <th>Giá</th>
+              <th>Danh mục</th>
+              <th>Chi tiết</th>
+              <th>Sửa</th>
+              <th>Xóa</th>
+            </tr>
+          </thead>
+          <tbody id="list">
+            <tr>
+              <td colspan="7">Đang tải dữ liệu từ Firebase...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyDk1XTVn68McS02jMIXnyQ3bqtpLF3L1XQ",
+        authDomain: "web-dienthoai0-dtdm.firebaseapp.com",
+        projectId: "web-dienthoai0-dtdm",
+        storageBucket: "web-dienthoai0-dtdm.firebasestorage.app",
+        messagingSenderId: "102142538462",
+        appId: "1:102142538462:web:8c2c6c4637a54304ef484f",
+      };
+
+      const CATEGORY_NAME_MAP = {
+        phone: "Điện thoại",
+        headphone: "Tai nghe",
+        charger: "Sạc",
+        tablet: "Máy tính bảng",
+        laptop: "Laptop",
+        watch: "Đồng hồ thông minh",
+        speaker: "Loa",
+      };
+
+      const app = firebase.apps.length
+        ? firebase.app()
+        : firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+      const list = document.getElementById("list");
+      const submitButton = document.getElementById("submitButton");
+      const formStatus = document.getElementById("formStatus");
+      const formTitle = document.getElementById("formTitle");
+      const categoryInput = document.getElementById("category");
+      const categoryNameInput = document.getElementById("categoryName");
+      const imageInput = document.getElementById("image");
+
+      let editingProductId = null;
+      let productCache = new Map();
+
+      categoryInput.addEventListener("change", () => {
+        categoryNameInput.value =
+          CATEGORY_NAME_MAP[categoryInput.value] || categoryNameInput.value;
+      });
+
+      function getProductCreatedAtValue(product) {
+        const createdAtMs = Number(product?.createdAtMs) || 0;
+        const createdAt =
+          typeof product?.createdAt?.toMillis === "function"
+            ? product.createdAt.toMillis()
+            : 0;
+
+        return Math.max(createdAtMs, createdAt);
+      }
+
+      function getSortedSnapshotDocs(snapshot) {
+        return [...snapshot.docs].sort((docA, docB) => {
+          const timeDiff =
+            getProductCreatedAtValue(docB.data()) -
+            getProductCreatedAtValue(docA.data());
+          if (timeDiff !== 0) return timeDiff;
+          return String(docB.id).localeCompare(String(docA.id));
+        });
+      }
+
+      function resolveImageUrl(imagePath) {
+        if (!imagePath) return "https://placehold.co/60x60?text=No+Image";
+        const normalizedPath = String(imagePath).replace(/\\/g, "/").trim();
+        if (
+          normalizedPath.startsWith("http://") ||
+          normalizedPath.startsWith("https://")
+        )
+          return normalizedPath;
+        return `../project/assets/images/${normalizedPath.split("/").pop()}`;
+      }
+
+      function parseSpecs(specsText) {
+        const specs = {};
+
+        specsText
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .forEach((line) => {
+            const separatorIndex = line.indexOf(":");
+            if (separatorIndex === -1) return;
+
+            const key = line.slice(0, separatorIndex).trim();
+            const value = line.slice(separatorIndex + 1).trim();
+            if (!key || !value) return;
+
+            specs[key] = value;
+          });
+
+        return specs;
+      }
+
+      function makeProductDocId(name, brand) {
+        const base = `${brand || ""}-${name || ""}`
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+
+        return `product-${base || Date.now()}`;
+      }
+
+      function formatSpecs(specs) {
+        if (!specs || typeof specs !== "object") return "";
+        return Object.entries(specs)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join("\n");
+      }
+
+      async function getFormData() {
+        const name = document.getElementById("name").value.trim();
+        const brand = document.getElementById("brand").value.trim();
+        const image = imageInput.value.trim();
+        const category = categoryInput.value;
+        const categoryName =
+          categoryNameInput.value.trim() ||
+          CATEGORY_NAME_MAP[category] ||
+          category;
+        const price = Number(document.getElementById("price").value);
+        const discount = Number(document.getElementById("discount").value) || 0;
+        const desc = document.getElementById("desc").value.trim();
+        const rating = Number(document.getElementById("rating").value) || 4.5;
+        const reviewCount =
+          Number(document.getElementById("reviewCount").value) || 0;
+        const specs = parseSpecs(document.getElementById("specs").value);
+
+        if (!name || !price || !image || !desc) {
+          throw new Error("Vui lòng nhập đủ tên, giá, ảnh và mô tả sản phẩm.");
+        }
+
+        return {
+          name,
+          brand,
+          image,
+          category,
+          categoryName,
+          price,
+          discount,
+          desc,
+          specs,
+          rating,
+          reviewCount,
+          isSale: discount > 0,
+          isNew: true,
+        };
+      }
+
+      function fillForm(product, id) {
+        editingProductId = id;
+        formTitle.textContent = "Cập nhật sản phẩm";
+        submitButton.textContent = "Cập nhật sản phẩm";
+        formStatus.textContent = `Đang sửa: ${product.name}`;
+
+        document.getElementById("name").value = product.name || "";
+        document.getElementById("brand").value = product.brand || "";
+        document.getElementById("image").value = product.image || "";
+        document.getElementById("price").value = product.price || "";
+        document.getElementById("discount").value = product.discount || 0;
+        document.getElementById("desc").value = product.desc || "";
+        document.getElementById("rating").value = product.rating || 4.5;
+        document.getElementById("reviewCount").value = product.reviewCount || 0;
+        document.getElementById("specs").value = formatSpecs(product.specs);
+        categoryInput.value = product.category || "phone";
+        categoryNameInput.value =
+          product.categoryName || CATEGORY_NAME_MAP[categoryInput.value] || "";
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function resetForm() {
+        editingProductId = null;
+        formTitle.textContent = "Thêm sản phẩm";
+        submitButton.textContent = "Lưu sản phẩm";
+        formStatus.textContent = "";
+
+        document.getElementById("name").value = "";
+        document.getElementById("brand").value = "";
+        document.getElementById("image").value = "";
+        document.getElementById("price").value = "";
+        document.getElementById("discount").value = "";
+        document.getElementById("desc").value = "";
+        document.getElementById("rating").value = "4.5";
+        document.getElementById("reviewCount").value = "0";
+        document.getElementById("specs").value = "";
+        categoryInput.value = "phone";
+        categoryNameInput.value = CATEGORY_NAME_MAP.phone;
+      }
+
+      async function saveProduct() {
+        try {
+          const formData = await getFormData();
+          const productDocId =
+            editingProductId || makeProductDocId(formData.name, formData.brand);
+          const existingProduct = editingProductId
+            ? productCache.get(editingProductId) || {}
+            : {};
+          submitButton.disabled = true;
+          submitButton.textContent = editingProductId
+            ? "Đang cập nhật..."
+            : "Đang lưu...";
+
+          await db
+            .collection("products")
+            .doc(productDocId)
+            .set(
+              {
+                ...existingProduct,
+                ...formData,
+                createdAtMs: Number(existingProduct.createdAtMs) || Date.now(),
+                updatedAtMs: Date.now(),
+                createdAt:
+                  existingProduct.createdAt ||
+                  firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+              },
+              { merge: true },
+            );
+
+          alert(
+            editingProductId ? "Đã cập nhật sản phẩm." : "Đã thêm sản phẩm.",
+          );
+          resetForm();
+        } catch (error) {
+          alert(error.message || "Lưu sản phẩm thất bại.");
+          console.error(error);
+        } finally {
+          submitButton.disabled = false;
+          submitButton.textContent = editingProductId
+            ? "Cập nhật sản phẩm"
+            : "Lưu sản phẩm";
+        }
+      }
+
+      function buildProductRow(product, productId, index) {
+        const imageUrl = resolveImageUrl(product.image);
+        const specCount =
+          product.specs && typeof product.specs === "object"
+            ? Object.keys(product.specs).length
+            : 0;
+
+        return `
+        <tr>
+            <td>${index}</td>
+            <td class="product-name-cell">
+                <img src="${imageUrl}" width="60" onerror="this.src='https://placehold.co/60x60?text=No+Image'"><br>
+                <strong>${product.name || ""}</strong>
+                <small>${product.brand || ""}</small>
+            </td>
+            <td>
+                ${(Number(product.price) || 0).toLocaleString("vi-VN")}₫
+                ${product.discount > 0 ? `<br><small>Đã giảm ${product.discount}%</small>` : ""}
+            </td>
+            <td>${product.categoryName || product.category || ""}</td>
+            <td>
+                <small>${product.desc ? "Có mô tả" : "Chưa có mô tả"}</small><br>
+                <small>${specCount} thông số</small>
+            </td>
+            <td><button onclick="editProduct('${productId}')">Sửa</button></td>
+            <td><button class="secondary" onclick="deleteProduct('${productId}')">Xóa</button></td>
+        </tr>
+    `;
+      }
+
+      let unsubscribeProducts = null;
+
+      function startProductListener() {
+        if (unsubscribeProducts) {
+          unsubscribeProducts();
+          unsubscribeProducts = null;
+        }
+
+        unsubscribeProducts = db.collection("products").onSnapshot(
+          (snapshot) => {
+            list.innerHTML = "";
+            productCache = new Map();
+
+            if (snapshot.empty) {
+              list.innerHTML = `<tr><td colspan="7">Firebase đã kết nối nhưng chưa có sản phẩm nào.</td></tr>`;
+              return;
+            }
+
+            const sortedDocs = getSortedSnapshotDocs(snapshot);
+
+            sortedDocs.forEach((doc, index) => {
+              productCache.set(doc.id, doc.data());
+              list.innerHTML += buildProductRow(doc.data(), doc.id, index + 1);
+            });
+          },
+          (error) => {
+            console.error("Lỗi đọc sản phẩm từ Firebase:", error);
+            list.innerHTML = `<tr><td colspan="7">Không thể tải dữ liệu từ Firebase.</td></tr>`;
+          },
+        );
+      }
+
+      auth.onAuthStateChanged((user) => {
+        if (!user) {
+          list.innerHTML = `<tr><td colspan="7">Bạn cần đăng nhập admin trước khi quản lý sản phẩm.</td></tr>`;
+          setTimeout(() => {
+            window.location.href = "login.html";
+          }, 800);
+          return;
+        }
+
+        startProductListener();
+      });
+
+      function editProduct(id) {
+        const product = productCache.get(id);
+        if (!product) {
+          alert("Không tìm thấy sản phẩm để sửa.");
+          return;
+        }
+
+        fillForm(product, id);
+      }
+
+      function deleteProduct(id) {
+        if (!confirm("Bạn có chắc muốn xóa sản phẩm này?")) return;
+
+        db.collection("products")
+          .doc(id)
+          .delete()
+          .then(() => {
+            if (editingProductId === id) resetForm();
+            alert("Đã xóa sản phẩm.");
+          })
+          .catch((error) => {
+            alert("Xóa sản phẩm thất bại.");
+            console.error(error);
+          });
+      }
+
+      resetForm();
+    </script>
+  </body>
+</html>
