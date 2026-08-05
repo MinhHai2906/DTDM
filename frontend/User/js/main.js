@@ -190,6 +190,7 @@ function createProductCard(product) {
 
   const card = template.content.firstElementChild.cloneNode(true);
   card.dataset.id = product.id;
+  card.style.cursor = "pointer";
   card.querySelector(".product-card-image img").src = product.image;
   card.querySelector(".product-card-image img").alt = product.name;
   card.querySelector(".product-brand").textContent = product.brand || "";
@@ -219,6 +220,10 @@ function createProductCard(product) {
   card.querySelector(".btn-buy-now").addEventListener("click", (event) => {
     event.stopPropagation();
     window.buyNow(product.id);
+  });
+
+  card.addEventListener("click", () => {
+    window.location.href = `detail.html?id=${encodeURIComponent(product.id)}`;
   });
 
   return card;

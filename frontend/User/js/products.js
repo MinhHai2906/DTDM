@@ -176,6 +176,7 @@ function createProductCard(product) {
 
   const card = template.content.firstElementChild.cloneNode(true);
   card.dataset.id = product.id;
+  card.style.cursor = "pointer";
   const image = card.querySelector(".product-card-image img");
   image.src = product.image || "https://placehold.co/300x200?text=No+Image";
   image.alt = product.name;
@@ -206,6 +207,10 @@ function createProductCard(product) {
   card.querySelector(".btn-buy-now").addEventListener("click", (event) => {
     event.stopPropagation();
     window.buyNow(product.id);
+  });
+
+  card.addEventListener("click", () => {
+    window.location.href = `detail.html?id=${encodeURIComponent(product.id)}`;
   });
 
   return card;
