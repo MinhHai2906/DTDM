@@ -133,11 +133,11 @@ class ProductService {
       if (snapshot.empty) {
         await this.ensureSeedProducts();
         const seeded = await firestore.collection("products").get();
-        const products = seeded.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        const products = seeded.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
         if (products.length > 0) return products;
       }
 
-      const products = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const products = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
       if (products.length > 0) return products;
       return this.getDemoProducts();
     } catch (error) {
@@ -147,23 +147,36 @@ class ProductService {
   }
 
   async createProduct(payload) {
-    const ref = await this.firebaseAdmin
-      .firestore()
-      .collection("products")
-      .add({
-        ...payload,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+    const firestore = this.firebaseAdmin.firestore();
+    const { id, ...productData } = payload;
+    const ref = id
+      ? firestore.collection("products").doc(String(id))
+      : firestore.collection("products").doc();
+    await ref.set({
+      ...productData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
     const doc = await ref.get();
     return { id: doc.id, ...doc.data() };
   }
 
   async updateProduct(id, payload) {
-    const ref = this.firebaseAdmin.firestore().collection("products").doc(id);
+    const products = this.firebaseAdmin.firestore().collection("products");
+    let ref = products.doc(id);
+    const existing = await ref.get();
+
+    if (!existing.exists) {
+      const legacySnapshot = await products.where("id", "==", id).limit(1).get();
+      if (legacySnapshot.empty) {
+        throw new Error(`Product not found: ${id}`);
+      }
+      ref = legacySnapshot.docs[0].ref;
+    }
+
     await ref.update({ ...payload, updatedAt: new Date() });
     const doc = await ref.get();
-    return { id: doc.id, ...doc.data() };
+    return { ...doc.data(), id: doc.id };
   }
 
   async deleteProduct(id) {
