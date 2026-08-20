@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:3001";
+const API_BASE_URL = "https://phonestore-backend-yt5q.onrender.com";
 
 let products = [];
 let currentBrand = "all";

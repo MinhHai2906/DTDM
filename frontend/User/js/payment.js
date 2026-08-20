@@ -1,6 +1,6 @@
 "use strict";
 
-const API_BASE_URL = "http://localhost:3001";
+const API_BASE_URL = "https://phonestore-backend-yt5q.onrender.com";
 const PAYMENT_CACHE_KEY = "checkoutOrder";
 const STATUS_PENDING = "Chờ xác nhận";
 const CASH_PAYMENT_VALUE = "cod";
