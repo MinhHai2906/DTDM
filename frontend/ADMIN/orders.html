@@ -236,9 +236,6 @@
       }
     </style>
 
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   </head>
   <body>
     <div class="sidebar">
@@ -255,7 +252,7 @@
 
       <div class="card">
         <div id="statusLine" class="status-line">
-          Đang tải đơn hàng từ Firebase...
+          Đang tải đơn hàng từ API...
         </div>
         <div class="filter-bar">
           <label>Lọc theo trạng thái:</label>
@@ -297,15 +294,7 @@
     </div>
 
     <script>
-      const firebaseConfig = {
-        apiKey: "AIzaSyDk1XTVn68McS02jMIXnyQ3bqtpLF3L1XQ",
-        authDomain: "web-dienthoai0-dtdm.firebaseapp.com",
-        projectId: "web-dienthoai0-dtdm",
-        storageBucket: "web-dienthoai0-dtdm.firebasestorage.app",
-        messagingSenderId: "102142538462",
-        appId: "1:102142538462:web:8c2c6c4637a54304ef484f",
-      };
-
+      const API_BASE_URL = "http://localhost:3001";
       const STATUS_OPTIONS = [
         "Chờ xác nhận",
         "Đã xác nhận",
@@ -313,10 +302,6 @@
         "Đã giao hàng thành công",
         "Đã hủy",
       ];
-
-      firebase.initializeApp(firebaseConfig);
-      const auth = firebase.auth();
-      const db = firebase.firestore();
 
       const statusLine = document.getElementById("statusLine");
       const updatedAtText = document.getElementById("updatedAt");
@@ -328,13 +313,6 @@
       function showStatus(message, isError = false) {
         statusLine.textContent = message;
         statusLine.style.color = isError ? "#fca5a5" : "#93c5fd";
-      }
-
-      function getPermissionErrorMessage(error, fallback) {
-        if (error?.code === "permission-denied") {
-          return "Bạn không có quyền đọc đơn hàng. Hãy đăng nhập tài khoản admin.";
-        }
-        return fallback;
       }
 
       function showToast(message, isError = false) {
@@ -351,6 +329,20 @@
           toast.classList.remove("show");
           setTimeout(() => toast.remove(), 250);
         }, 2400);
+      }
+
+      async function apiFetch(url, options = {}) {
+        const response = await fetch(url, {
+          headers: { "Content-Type": "application/json" },
+          ...options,
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || "Yêu cầu thất bại.");
+        }
+
+        return data;
       }
 
       function fmtMoney(value) {
@@ -373,66 +365,6 @@
         }
 
         return "-";
-      }
-
-      function nowTimelineStamp() {
-        return new Date().toLocaleDateString("vi-VN", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-      }
-
-      function buildTimelineForStatus(status) {
-        const stamp = nowTimelineStamp();
-
-        if (status === "Đã hủy") {
-          return [
-            { step: "Đặt hàng", done: true, current: false, time: stamp },
-            {
-              step: "Đã hủy",
-              done: true,
-              current: true,
-              cancelled: true,
-              time: stamp,
-            },
-          ];
-        }
-
-        return [
-          {
-            step: "Đặt hàng",
-            done: true,
-            current: status === "Chờ xác nhận",
-            time: stamp,
-          },
-          {
-            step: "Đã xác nhận",
-            done: [
-              "Đã xác nhận",
-              "Đang giao hàng",
-              "Đã giao hàng thành công",
-            ].includes(status),
-            current: status === "Đã xác nhận",
-            time: status === "Đã xác nhận" ? stamp : "",
-          },
-          {
-            step: "Đang giao hàng",
-            done: ["Đang giao hàng", "Đã giao hàng thành công"].includes(
-              status,
-            ),
-            current: status === "Đang giao hàng",
-            time: status === "Đang giao hàng" ? stamp : "",
-          },
-          {
-            step: "Đã giao hàng thành công",
-            done: status === "Đã giao hàng thành công",
-            current: status === "Đã giao hàng thành công",
-            time: status === "Đã giao hàng thành công" ? stamp : "",
-          },
-        ];
       }
 
       function normalizeItems(items) {
@@ -548,17 +480,10 @@
             event.target.disabled = true;
 
             try {
-              await db
-                .collection("orders")
-                .doc(orderId)
-                .set(
-                  {
-                    status: newStatus,
-                    timeline: buildTimelineForStatus(newStatus),
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                  },
-                  { merge: true },
-                );
+              await apiFetch(`${API_BASE_URL}/api/orders/${orderId}/status`, {
+                method: "PATCH",
+                body: JSON.stringify({ status: newStatus }),
+              });
 
               showToast("Đã cập nhật trạng thái đơn hàng");
             } catch (error) {
@@ -571,95 +496,43 @@
         });
       }
 
-      function subscribeOrdersRealtime() {
-        showStatus("Đang đồng bộ đơn hàng từ Firestore realtime...");
-
-        db.collection("orders")
-          .orderBy("createdAt", "desc")
-          .onSnapshot(
-            (snapshot) => {
-              allOrders = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-              }));
-
-              // Reset filter when data updates
-              statusFilter.value = "";
-              filterResult.textContent = "";
-
-              renderOrders(allOrders);
-
-              const nowText = new Date().toLocaleString("vi-VN");
-              updatedAtText.textContent = `Đã đồng bộ lúc: ${nowText} | Tổng đơn: ${allOrders.length}`;
-              showStatus(`Đang hiển thị ${allOrders.length} đơn hàng.`);
-            },
-            (error) => {
-              console.error("Không thể tải đơn hàng:", error);
-              showStatus(
-                getPermissionErrorMessage(
-                  error,
-                  "Lỗi khi kết nối Firestore. Vui lòng kiểm tra quyền đọc collection orders.",
-                ),
-                true,
-              );
-              ordersBody.innerHTML =
-                '<tr class="empty-row"><td colspan="8">Không thể tải dữ liệu đơn hàng.</td></tr>';
-            },
-          );
-      }
-
-      async function ensureAdminAccess(user) {
-        if (!user) return false;
-
-        const idTokenResult = await user.getIdTokenResult(true);
-        if (
-          idTokenResult?.claims?.admin === true ||
-          idTokenResult?.claims?.role === "admin"
-        ) {
-          return true;
-        }
+      async function loadOrders() {
+        showStatus("Đang đồng bộ đơn hàng từ API...");
 
         try {
-          const userDoc = await db.collection("users").doc(user.uid).get();
-          return userDoc.exists && userDoc.data()?.role === "admin";
-        } catch {
-          return false;
+          const orders = await apiFetch(`${API_BASE_URL}/api/orders`);
+          allOrders = Array.isArray(orders) ? orders : [];
+          statusFilter.value = "";
+          filterResult.textContent = "";
+          renderOrders(allOrders);
+
+          const nowText = new Date().toLocaleString("vi-VN");
+          updatedAtText.textContent = `Đã đồng bộ lúc: ${nowText} | Tổng đơn: ${allOrders.length}`;
+          showStatus(`Đang hiển thị ${allOrders.length} đơn hàng.`);
+        } catch (error) {
+          console.error("Không thể tải đơn hàng:", error);
+          showStatus("Lỗi khi tải đơn hàng từ backend.", true);
+          ordersBody.innerHTML =
+            '<tr class="empty-row"><td colspan="8">Không thể tải dữ liệu đơn hàng.</td></tr>';
         }
       }
 
-      auth.onAuthStateChanged(async (user) => {
-        if (!user) {
+      function checkAdminSession() {
+        const session = JSON.parse(localStorage.getItem("mobistore_auth") || "null");
+        if (!session || !session.user) {
           showStatus("Bạn cần đăng nhập admin trước khi xem đơn hàng.", true);
           ordersBody.innerHTML =
             '<tr class="empty-row"><td colspan="8">Bạn chưa đăng nhập admin.</td></tr>';
           setTimeout(() => {
             window.location.href = "login.html";
           }, 900);
-          return;
+          return false;
         }
+        return true;
+      }
 
-        showStatus("Đang kiểm tra quyền admin...");
-
-        let isAdmin = false;
-        try {
-          isAdmin = await ensureAdminAccess(user);
-        } catch (error) {
-          console.error("Lỗi kiểm tra quyền admin:", error);
-        }
-
-        if (!isAdmin) {
-          showStatus(
-            "Tài khoản này không có quyền admin để xem đơn hàng.",
-            true,
-          );
-          ordersBody.innerHTML =
-            '<tr class="empty-row"><td colspan="8">Tài khoản hiện tại không có quyền admin.</td></tr>';
-          showToast("Tài khoản không có quyền admin", true);
-          return;
-        }
-
-        subscribeOrdersRealtime();
-      });
+      statusFilter.addEventListener("change", filterOrdersByStatus);
+      checkAdminSession() && loadOrders();
     </script>
   </body>
 </html>

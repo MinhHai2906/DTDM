@@ -154,7 +154,6 @@ function renderFlashSaleProducts() {
 function createFlashSaleCard(product) {
     const currentPrice = product.price;
     const oldPrice = product.oldPrice || product.price;
-    const soldPercent = Math.floor(Math.random() * 60) + 30;
 
     return `
         <div class="product-card flash-sale-card" data-id="${escapeHtml(product.id)}">
@@ -171,12 +170,6 @@ function createFlashSaleCard(product) {
                 <div class="product-price">
                     <span class="current-price">${formatPrice(currentPrice)}</span>
                     <span class="old-price">${formatPrice(oldPrice)}</span>
-                </div>
-                <div class="sold-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width:${soldPercent}%"></div>
-                    </div>
-                    <span class="sold-text">Đã bán ${soldPercent}%</span>
                 </div>
                 <div class="product-actions">
                     <button class="btn-cart" onclick='addToCart(${JSON.stringify(product.id)})'>

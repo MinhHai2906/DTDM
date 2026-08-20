@@ -22,33 +22,7 @@
 
       <script src="../User/js/data.js"></script>
 
-      <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import {
-          getAuth,
-          onAuthStateChanged,
-        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import {
-          getFirestore,
-          collection,
-          doc,
-          setDoc,
-          query,
-          where,
-          getDocs,
-          serverTimestamp,
-        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-        const firebaseConfig = {
-          apiKey: "AIzaSyDk1XTVn68McS02jMIXnyQ3bqtpLF3L1XQ",
-          authDomain: "web-dienthoai0-dtdm.firebaseapp.com",
-          projectId: "web-dienthoai0-dtdm",
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
+      <script>
         const statusTitle = document.getElementById("statusTitle");
         const statusDetail = document.getElementById("statusDetail");
 
@@ -65,57 +39,44 @@
         }
 
         async function uploadData() {
-          const existing = await getDocs(query(collection(db, "products")));
-          const existingNames = new Set(existing.docs.map((doc) => doc.id));
+          const authState = localStorage.getItem("mobistore_auth");
+          if (!authState) {
+            statusTitle.textContent = "Bạn cần đăng nhập admin trước rồi mở trang này để upload.";
+            statusDetail.textContent = "Mở login admin, đăng nhập, sau đó quay lại trang upload.";
+            return;
+          }
+
+          statusTitle.textContent = "Đang upload dữ liệu lên API...";
+          statusDetail.textContent = `Tài khoản admin đã xác thực.`;
+
           let created = 0;
           let skipped = 0;
 
           for (const product of seedProducts) {
             const docId = makeProductDocId(product);
-            if (existingNames.has(docId)) {
-              skipped += 1;
-              continue;
-            }
+            try {
+              const response = await fetch("http://localhost:3001/api/products", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ...product, id: docId }),
+              });
 
-            await setDoc(
-              doc(db, "products", docId),
-              {
-                ...product,
-                createdAtMs: Date.now(),
-                updatedAtMs: Date.now(),
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-              },
-              { merge: true },
-            );
-            created += 1;
+              if (response.ok) {
+                created += 1;
+              } else {
+                skipped += 1;
+              }
+            } catch (error) {
+              skipped += 1;
+              console.warn("Upload product skipped:", error.message);
+            }
           }
 
           statusTitle.textContent = "Upload hoàn tất";
-          statusDetail.textContent = `Đã thêm ${created} sản phẩm, bỏ qua ${skipped} sản phẩm đã tồn tại.`;
+          statusDetail.textContent = `Đã thêm ${created} sản phẩm, bỏ qua ${skipped} sản phẩm.`;
         }
 
-        onAuthStateChanged(auth, async (user) => {
-          if (!user) {
-            statusTitle.textContent =
-              "Bạn cần đăng nhập admin trước rồi mở trang này để upload.";
-            statusDetail.textContent =
-              "Mở login admin, đăng nhập, sau đó quay lại trang upload.";
-            return;
-          }
-
-          statusTitle.textContent = "Đang upload dữ liệu lên Firebase...";
-          statusDetail.textContent = `Tài khoản: ${user.email || user.uid}`;
-
-          try {
-            await uploadData();
-          } catch (error) {
-            console.error("Upload thất bại:", error);
-            statusTitle.textContent = "Upload thất bại";
-            statusDetail.textContent =
-              error.message || "Không thể ghi products vào Firestore.";
-          }
-        });
+        uploadData();
       </script>
     </div>
   </body>

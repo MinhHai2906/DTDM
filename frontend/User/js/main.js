@@ -1,33 +1,29 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  collection,
-  getFirestore,
-  onSnapshot,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDk1XTVn68McS02jMIXnyQ3bqtpLF3L1XQ",
-  authDomain: "web-dienthoai0-dtdm.firebaseapp.com",
-  projectId: "web-dienthoai0-dtdm",
-  storageBucket: "web-dienthoai0-dtdm.firebasestorage.app",
-  messagingSenderId: "102142538462",
-  appId: "1:102142538462:web:8c2c6c4637a54304ef484f",
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const API_BASE_URL = "http://localhost:3001";
 
 let products = [];
 let currentBrand = "all";
 let currentCategory = "all";
 
-document.addEventListener("DOMContentLoaded", () => {
+function getTimestampMs(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  if (value && typeof value.seconds === "number") {
+    return value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1000000);
+  }
+  return 0;
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
   setupBrandFilters();
   setupCategoryFilters();
   setupSearch();
   updateCartCount();
   setupBackToTop();
-  subscribeProducts();
+  await loadProductsFromApi();
 
   const profileLinks = document.querySelectorAll(
     'a[href="profile.html"], #profileLink',
@@ -42,52 +38,51 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-function subscribeProducts() {
-  onSnapshot(
-    collection(db, "products"),
-    (snapshot) => {
-      products = snapshot.docs.map((doc) => {
-        const data = doc.data() || {};
+async function loadProductsFromApi() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/products`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
 
-        return {
-          id: doc.id,
-          name: data.name || "Sản phẩm chưa có tên",
-          price: Number(data.price) || 0,
-          brand: data.brand || "",
-          category: data.category || "",
-          image: resolveImageUrl(data.image),
-          isNew: Boolean(data.isNew),
-          isSale: Boolean(data.isSale),
-          discount: Number(data.discount) || 0,
-          rating: Number(data.rating) || 4.5,
-          updatedAt: getProductActivityValue(data),
-        };
-      });
+    const items = await response.json();
+    products = Array.isArray(items)
+      ? items.map((item) => ({
+          id: item.id,
+          name: item.name || "Sản phẩm chưa có tên",
+          price: Number(item.price) || 0,
+          brand: item.brand || "",
+          category: item.category || "",
+          image: resolveImageUrl(item.image),
+          isNew: Boolean(item.isNew),
+          isSale: Boolean(item.isSale),
+          discount: Number(item.discount) || 0,
+          rating: Number(item.rating) || 4.5,
+          updatedAt: Math.max(
+            Number(item.updatedAtMs) || 0,
+            getTimestampMs(item.updatedAt),
+            Number(item.createdAtMs) || 0,
+            getTimestampMs(item.createdAt),
+          ),
+        }))
+      : [];
 
-      renderFilteredProducts();
-    },
-    (error) => {
-      console.error("Không thể đọc sản phẩm từ Firebase:", error);
-      showStatusMessage("new-products", "Không thể tải dữ liệu sản phẩm.");
-      showStatusMessage("sale-products", "Không thể tải dữ liệu sản phẩm.");
-      showStatusMessage("all-products", "Không thể tải dữ liệu sản phẩm.");
-    },
-  );
+    renderFilteredProducts();
+  } catch (error) {
+    console.error("Không thể đọc sản phẩm từ API:", error);
+    showStatusMessage("new-products", "Không thể tải dữ liệu sản phẩm.");
+    showStatusMessage("sale-products", "Không thể tải dữ liệu sản phẩm.");
+    showStatusMessage("all-products", "Không thể tải dữ liệu sản phẩm.");
+  }
 }
 
 function getProductActivityValue(data) {
-  const updatedAtMs = Number(data?.updatedAtMs) || 0;
-  const updatedAt =
-    typeof data?.updatedAt?.toMillis === "function"
-      ? data.updatedAt.toMillis()
-      : 0;
-  const createdAtMs = Number(data?.createdAtMs) || 0;
-  const createdAt =
-    typeof data?.createdAt?.toMillis === "function"
-      ? data.createdAt.toMillis()
-      : 0;
-
-  return Math.max(updatedAtMs, updatedAt, createdAtMs, createdAt);
+  return Math.max(
+    Number(data?.updatedAtMs) || 0,
+    getTimestampMs(data?.updatedAt),
+    Number(data?.createdAtMs) || 0,
+    getTimestampMs(data?.createdAt),
+  );
 }
 
 function resolveImageUrl(imagePath) {

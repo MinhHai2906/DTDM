@@ -1,25 +1,21 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  collection,
-  getFirestore,
-  onSnapshot,
-  query,
-  where,
-  addDoc,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import {
-  getAuth,
-  onAuthStateChanged,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+const API_BASE_URL = "http://localhost:3001";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDk1XTVn68McS02jMIXnyQ3bqtpLF3L1XQ",
-  authDomain: "web-dienthoai0-dtdm.firebaseapp.com",
-  projectId: "web-dienthoai0-dtdm",
-  storageBucket: "web-dienthoai0-dtdm.firebasestorage.app",
-  messagingSenderId: "102142538462",
-  appId: "1:102142538462:web:8c2c6c4637a54304ef484f",
-};
+async function apiFetchJson(url, options = {}) {
+  const response = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    ...options,
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || "Yêu cầu thất bại.");
+  }
+
+  return data;
+}
 
 const CATEGORY_NAME_MAP = {
   phone: "Điện thoại",
@@ -31,10 +27,6 @@ const CATEGORY_NAME_MAP = {
   speaker: "Loa",
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-
 let products = [];
 let currentProduct = null;
 let currentReviews = [];
@@ -42,15 +34,18 @@ let currentStarFilter = 0;
 let selectedSubmitStar = 5;
 let firebaseUser = null;
 
-// Theo dõi trạng thái đăng nhập từ Firebase SDK
-onAuthStateChanged(auth, (user) => {
-  firebaseUser = user;
-  if (user) {
-    console.log("Firebase Auth: Đã xác thực người dùng", user.uid);
-  } else {
-    console.log("Firebase Auth: Chưa đăng nhập hoặc đang load...");
+function getTimestampMs(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
   }
-});
+  if (value && typeof value.seconds === "number") {
+    return value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1000000);
+  }
+  return 0;
+}
 
 function renderStarsHTML(rating, size = "16px") {
   let html = "";
@@ -199,7 +194,6 @@ function setupReviewForm() {
         return;
       }
 
-      // Điền tên người dùng đã đăng nhập và khóa input
       if (nameInput) {
         nameInput.value = currentUser.name || currentUser.displayName || "";
         nameInput.readOnly = true;
@@ -244,37 +238,25 @@ function setupReviewForm() {
       btnSubmit.textContent = "Đang gửi...";
 
       try {
-        // Ưu tiên lấy UID trực tiếp từ Firebase Auth SDK để khớp với Rules
-        const uid = firebaseUser
-          ? firebaseUser.uid
-          : auth.currentUser
-            ? auth.currentUser.uid
-            : null;
+        const currentUser = JSON.parse(
+          localStorage.getItem("currentUser") || "null",
+        );
+        const uid = currentUser?.id || currentUser?.uid || "guest";
 
-        if (!uid) {
-          showModal(
-            "Hệ thống chưa xác thực được tài khoản của bạn. Vui lòng đợi trong giây lát hoặc thử đăng nhập lại.",
-            false,
-          );
-          btnSubmit.disabled = false;
-          btnSubmit.textContent = "Gửi Đánh Giá";
-          return;
-        }
-
-        await addDoc(collection(db, "reviews"), {
-          userId: uid,
-          customer: name,
-          product: currentProduct.name,
-          content: content,
-          star: selectedSubmitStar,
-          status: "approved",
-          date: new Date().toISOString().split("T")[0],
-          verified: false,
-          reply: "", // Đồng bộ cấu trúc với bên Admin
+        const reviewResponse = await apiFetchJson(`${API_BASE_URL}/api/reviews`, {
+          method: "POST",
+          body: JSON.stringify({
+            userId: uid,
+            customer: name,
+            product: currentProduct.name,
+            content,
+            star: selectedSubmitStar,
+            status: "approved",
+            verified: false,
+          }),
         });
-        showModal("Gửi đánh giá thành công! Cảm ơn bạn đã chia sẻ.", true);
 
-        // Reset form nhưng giữ lại tên nếu vẫn login
+        showModal("Gửi đánh giá thành công! Cảm ơn bạn đã chia sẻ.", true);
         document.getElementById("reviewContent").value = "";
         container.style.display = "none";
         selectedSubmitStar = 5;
@@ -282,9 +264,13 @@ function setupReviewForm() {
           s.classList.remove("far");
           s.classList.add("fas");
         });
+
+        if (reviewResponse?.id) {
+          await loadProductReviews(currentProduct.name);
+        }
       } catch (err) {
-        console.error("Lỗi chi tiết từ Firebase:", err);
-        showModal("Lỗi Firebase: " + (err.message || "Gửi thất bại"), false);
+        console.error("Lỗi gửi đánh giá:", err);
+        showModal("Lỗi khi gửi đánh giá: " + (err.message || "Gửi thất bại"), false);
       } finally {
         btnSubmit.disabled = false;
         btnSubmit.textContent = "Gửi Đánh Giá";
@@ -293,30 +279,26 @@ function setupReviewForm() {
   }
 }
 
+async function loadProductReviews(productName) {
+  if (!productName) return;
+
+  try {
+    const reviews = await apiFetchJson(
+      `${API_BASE_URL}/api/reviews?product=${encodeURIComponent(productName)}`,
+    );
+    currentReviews = Array.isArray(reviews) ? reviews : [];
+    currentReviews.sort(
+      (a, b) => getTimestampMs(b.createdAt || b.date) - getTimestampMs(a.createdAt || a.date),
+    );
+    renderReviews();
+  } catch (error) {
+    console.error("Lỗi khi tải bình luận:", error);
+  }
+}
+
 function subscribeProductReviews(productName) {
   if (!productName) return;
-  const q = query(
-    collection(db, "reviews"),
-    where("product", "==", productName),
-    where("status", "in", ["approved", "replied"]),
-  );
-
-  onSnapshot(
-    q,
-    (snapshot) => {
-      currentReviews = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      currentReviews.sort(
-        (a, b) => new Date(b.date || 0) - new Date(a.date || 0),
-      );
-      renderReviews();
-    },
-    (error) => {
-      console.error("Lỗi khi tải bình luận:", error);
-    },
-  );
+  loadProductReviews(productName);
 }
 
 function getProductLookupFromUrl() {
@@ -372,13 +354,16 @@ function getOldPrice(price, oldPrice, discount) {
   return Math.round(normalizedPrice / (1 - normalizedDiscount / 100));
 }
 
-function mapProduct(doc) {
-  const data = doc.data() || {};
+function mapProduct(rawProduct) {
+  const data =
+    rawProduct && typeof rawProduct.data === "function"
+      ? { id: rawProduct.id, ...rawProduct.data() }
+      : rawProduct || {};
   const price = Number(data.price) || 0;
   const discount = Number(data.discount) || 0;
 
   return {
-    id: doc.id,
+    id: data.id || "",
     name: data.name || "Sản phẩm chưa có tên",
     brand: data.brand || "",
     category: data.category || "phone",
@@ -607,6 +592,12 @@ function renderProductDetail(product) {
 
   renderRelatedProducts(product);
   subscribeProductReviews(product.name);
+
+  if (new URLSearchParams(window.location.search).get("review") === "1") {
+    setTimeout(() => {
+      document.getElementById("btnToggleReviewForm")?.click();
+    }, 0);
+  }
 }
 
 function renderNotFound() {
@@ -654,39 +645,42 @@ function setupSearch() {
   }
 }
 
-function subscribeProducts() {
+async function subscribeProducts() {
   const { productId, productName } = getProductLookupFromUrl();
 
-  onSnapshot(
-    collection(db, "products"),
-    (snapshot) => {
-      products = snapshot.docs.map(mapProduct);
-      let product = products.find(
-        (item) => String(item.id) === String(productId),
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/products`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const items = await response.json();
+    products = Array.isArray(items) ? items.map(mapProduct) : [];
+
+    let product = products.find(
+      (item) => String(item.id) === String(productId),
+    );
+
+    if (!product && productName) {
+      const normalizedName = String(productName).trim().toLowerCase();
+      product = products.find(
+        (item) =>
+          String(item.name || "")
+            .trim()
+            .toLowerCase() === normalizedName,
       );
+    }
 
-      if (!product && productName) {
-        const normalizedName = String(productName).trim().toLowerCase();
-        product = products.find(
-          (item) =>
-            String(item.name || "")
-              .trim()
-              .toLowerCase() === normalizedName,
-        );
-      }
-
-      if (!product) {
-        renderNotFound();
-        return;
-      }
-
-      renderProductDetail(product);
-    },
-    (error) => {
-      console.error("Không thể đọc sản phẩm từ Firebase:", error);
+    if (!product) {
       renderNotFound();
-    },
-  );
+      return;
+    }
+
+    renderProductDetail(product);
+  } catch (error) {
+    console.error("Không thể đọc sản phẩm từ API:", error);
+    renderNotFound();
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {

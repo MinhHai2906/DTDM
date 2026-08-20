@@ -1,6 +1,6 @@
 "use strict";
 
-const PAYMENT_COLLECTION = "orders";
+const API_BASE_URL = "http://localhost:3001";
 const PAYMENT_CACHE_KEY = "checkoutOrder";
 const STATUS_PENDING = "Chờ xác nhận";
 const CASH_PAYMENT_VALUE = "cod";
@@ -11,6 +11,23 @@ const fmt = (value) =>
   new Intl.NumberFormat("vi-VN").format(Number(value) || 0) + "đ";
 const nowIso = () => new Date().toISOString();
 
+async function apiFetchJson(url, options = {}) {
+  const response = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    ...options,
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || "Yêu cầu thất bại.");
+  }
+
+  return data;
+}
+
 function getCurrentUser() {
   return JSON.parse(localStorage.getItem("currentUser") || "null");
 }
@@ -19,45 +36,8 @@ function getCartKey(userId) {
   return userId ? `cart_${userId}` : "cart";
 }
 
-function waitForFirebase() {
-  return new Promise((resolve, reject) => {
-    let attempts = 0;
-    const timer = setInterval(() => {
-      if (window.firebaseDb && window.firebaseAuth) {
-        clearInterval(timer);
-        resolve({ auth: window.firebaseAuth, db: window.firebaseDb });
-        return;
-      }
-
-      attempts += 1;
-      if (attempts > 100) {
-        clearInterval(timer);
-        reject(new Error("Firebase chưa sẵn sàng"));
-      }
-    }, 50);
-  });
-}
-
-function waitForAuthUser(auth, timeoutMs = 5000) {
-  if (auth?.currentUser) return Promise.resolve(auth.currentUser);
-
-  return new Promise((resolve) => {
-    let unsubscribe = () => {};
-    const timer = setTimeout(() => {
-      unsubscribe();
-      resolve(null);
-    }, timeoutMs);
-
-    unsubscribe = auth.onAuthStateChanged((user) => {
-      clearTimeout(timer);
-      unsubscribe();
-      resolve(user || null);
-    });
-  });
-}
-
-function getResolvedUserId(currentUser, authUser) {
-  return authUser?.uid || currentUser?.id || currentUser?.uid || "";
+function getResolvedUserId(currentUser) {
+  return currentUser?.id || currentUser?.uid || "";
 }
 
 function getCheckoutPayload() {
@@ -222,40 +202,14 @@ async function submitOrder(event) {
   const total =
     Number(payload.total) || Math.max(0, subtotal - discount + shipping);
   const addressText = resolveAddressText(formData);
-  let db;
-  let authUser;
-  let resolvedUserId = "";
+  const resolvedUserId = getResolvedUserId(currentUser);
 
-  try {
-    const firebaseCtx = await waitForFirebase();
-    db = firebaseCtx.db;
-    authUser = await waitForAuthUser(firebaseCtx.auth);
-    resolvedUserId = getResolvedUserId(currentUser, authUser);
-  } catch (error) {
-    console.error("Firebase not ready for payment:", error);
-    showToast(
-      "Hệ thống Firebase chưa sẵn sàng. Vui lòng thử lại sau ít phút.",
-      "error",
-    );
-    return;
-  }
-
-  if (!authUser || !resolvedUserId) {
+  if (!resolvedUserId) {
     showToast("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", "error");
     setTimeout(() => {
       window.location.href = "signin.html?from=payment";
     }, 700);
     return;
-  }
-
-  if (!currentUser || currentUser.id !== resolvedUserId) {
-    localStorage.setItem(
-      "currentUser",
-      JSON.stringify({
-        ...(currentUser || {}),
-        id: resolvedUserId,
-      }),
-    );
   }
 
   const order = {
@@ -299,12 +253,15 @@ async function submitOrder(event) {
       },
     ],
     noteCreatedAt: nowIso(),
-    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 
   try {
-    await db.collection(PAYMENT_COLLECTION).doc(orderId).set(order);
+    await apiFetchJson(`${API_BASE_URL}/api/orders`, {
+      method: "POST",
+      body: JSON.stringify(order),
+    });
 
     localStorage.removeItem(PAYMENT_CACHE_KEY);
     showToast("Đặt hàng thành công. Đang chuyển tới lịch sử đơn hàng...");
@@ -314,18 +271,7 @@ async function submitOrder(event) {
     }, 1200);
   } catch (error) {
     console.error("Payment submit failed:", error);
-    if (error?.code === "permission-denied") {
-      showToast(
-        "Bạn chưa có quyền tạo đơn hàng. Vui lòng đăng nhập lại tài khoản user.",
-        "error",
-      );
-      return;
-    }
-
-    showToast(
-      "Không thể lưu đơn hàng lên Firebase. Vui lòng thử lại.",
-      "error",
-    );
+    showToast(error.message || "Không thể lưu đơn hàng. Vui lòng thử lại.", "error");
   }
 }
 

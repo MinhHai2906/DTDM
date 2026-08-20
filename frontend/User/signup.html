@@ -14,10 +14,6 @@
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/sign.css" />
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
       .auth-container {
         max-width: 450px;
@@ -252,6 +248,17 @@
         <div style="flex: 1; height: 1px; background: #e9ecef"></div>
         <span style="font-size: 13px; color: #999">HOẶC</span>
         <div style="flex: 1; height: 1px; background: #e9ecef"></div>
+      </div>
+      <div id="googleSignInButton">
+        <button
+          type="button"
+          id="googleSignInBtn"
+          class="btn-auth"
+          style="background: #4285f4; border-radius: 40px; color: white; margin-top: 10px;"
+        >
+          <i class="fab fa-google"></i>
+          <span>Đăng ký bằng Google</span>
+        </button>
       </div>
 
       <div class="auth-footer">
@@ -607,6 +614,10 @@
     <!-- Google Auth Configuration -->
     <script src="js/google-auth-config.js"></script>
 
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
     <!-- Firebase Config -->
     <script src="js/firebase-config.js"></script>
 
@@ -617,8 +628,8 @@
     <script>
       document.addEventListener("DOMContentLoaded", async () => {
         try {
-          // Google Auth đã được khởi tạo trong google-auth.js
-          // Chỉ cần hide loading và enable form
+          await googleAuth.initialize();
+          googleAuth.renderSignInButton("googleSignInButton", "signup");
 
           // Hide loading overlay and enable form
           const loadingOverlay = document.getElementById("loadingOverlay");

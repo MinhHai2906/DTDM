@@ -6,13 +6,15 @@
    pagination, toast, cart sync
    ============================================= */
 
+const API_BASE_URL = "http://localhost:3001";
+
 // ─── STATE ──────────────────────────────────
 function getCurrentUser() {
   return JSON.parse(localStorage.getItem("currentUser") || "null");
 }
 
 function getUserId(user = getCurrentUser()) {
-  return user?.id || user?.uid || "";
+  return user?.id || user?.uid || user?.userId || "";
 }
 
 function getOrderStorageKey(userId = getUserId()) {
@@ -206,6 +208,13 @@ const STATUS_ICON = {
   cancelled: "fa-times-circle",
   "Đã hủy": "fa-times-circle",
 };
+const CANCELLABLE_STATUSES = new Set([
+  "pending",
+  "confirmed",
+  "Chờ xác nhận",
+  "Đã xác nhận",
+]);
+const canCancelOrder = (status) => CANCELLABLE_STATUSES.has(status);
 const PAY_ICON = {
   "Chuyển khoản ngân hàng": "fa-university",
   "Tiền mặt khi nhận hàng": "fa-money-bill-wave",
@@ -239,26 +248,23 @@ function saveOrders() {
   if (!user) return;
   const key = getOrderStorageKey(getUserId(user));
   localStorage.setItem(key, JSON.stringify(orders));
-  syncOrdersToFirestore();
 }
 
-function waitForFirebase() {
-  return new Promise((resolve, reject) => {
-    let attempts = 0;
-    const timer = setInterval(() => {
-      if (window.firebaseDb && window.firebaseAuth) {
-        clearInterval(timer);
-        resolve({ auth: window.firebaseAuth, db: window.firebaseDb });
-        return;
-      }
-
-      attempts += 1;
-      if (attempts > 100) {
-        clearInterval(timer);
-        reject(new Error("Firebase chưa sẵn sàng"));
-      }
-    }, 50);
+async function apiFetchJson(url, options = {}) {
+  const response = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    ...options,
   });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || "Yêu cầu thất bại.");
+  }
+
+  return data;
 }
 
 function normalizeOrder(raw = {}, fallbackId = "") {
@@ -356,102 +362,68 @@ function buildTimelineForStatus(status, createdAt = new Date()) {
   ];
 }
 
-async function persistOrderToFirestore(order) {
+async function cancelOrderInApi(orderId, reason) {
   try {
-    const { db } = await waitForFirebase();
-    const payload = { ...order };
-    delete payload.id;
-    delete payload.orderCode;
-    await db.collection("orders").doc(order.id).set(payload, { merge: true });
+    await apiFetchJson(`${API_BASE_URL}/api/orders/${orderId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "Đã hủy", cancellationReason: reason }),
+    });
+    return true;
   } catch (error) {
-    console.warn("Không thể đồng bộ đơn hàng lên Firebase:", error.message);
+    console.warn("Không thể cập nhật đơn hàng đã hủy:", error.message);
+    return false;
   }
 }
 
-async function deleteOrderFromFirestore(orderId) {
+async function loadOrdersFromApi() {
+  const user = getCurrentUser();
+  const userId = getUserId(user);
+
   try {
-    const { db } = await waitForFirebase();
-    await db.collection("orders").doc(orderId).delete();
+    let list = [];
+
+    if (userId) {
+      list = await apiFetchJson(
+        `${API_BASE_URL}/api/orders?userId=${encodeURIComponent(userId)}`,
+      );
+    } else {
+      list = await apiFetchJson(`${API_BASE_URL}/api/orders`);
+    }
+
+    orders = Array.isArray(list)
+      ? list.map((order) => normalizeOrder(order, order.id))
+      : [];
+
+    // Legacy-session fallback: recover orders when stored login object has no uid.
+    if (!userId && user) {
+      const email = (user.email || "").trim().toLowerCase();
+      const name = (user.name || user.displayName || "").trim().toLowerCase();
+      orders = orders.filter((order) => {
+        const orderEmail = (order.email || "").trim().toLowerCase();
+        const orderCustomer = (order.customer || order.name || "")
+          .trim()
+          .toLowerCase();
+        if (email && orderEmail) return orderEmail === email;
+        if (name && orderCustomer) return orderCustomer === name;
+        return false;
+      });
+    }
+
+    orders.sort((a, b) => getOrderCreatedTime(b) - getOrderCreatedTime(a));
+    const storageKey = getOrderStorageKey(userId);
+    localStorage.setItem(storageKey, JSON.stringify(orders));
+    filtered = [...orders];
+    applyFilter();
   } catch (error) {
-    console.warn("Không thể xóa đơn hàng trên Firebase:", error.message);
+    console.error("Không thể tải đơn hàng từ API:", error);
+    orders = [];
+    filtered = [];
+    applyFilter();
   }
 }
-
-async function syncOrdersToFirestore() {
-  const tasks = orders.map((order) => persistOrderToFirestore(order));
-  await Promise.all(tasks);
-}
-
-let unsubscribeOrdersSnapshot = null;
 
 function subscribeFirebaseOrders() {
-  waitForFirebase()
-    .then(({ db, auth }) => {
-      auth.onAuthStateChanged((authUser) => {
-        if (unsubscribeOrdersSnapshot) {
-          unsubscribeOrdersSnapshot();
-          unsubscribeOrdersSnapshot = null;
-        }
-
-        if (!authUser) {
-          orders = [];
-          filtered = [];
-          applyFilter();
-          return;
-        }
-
-        const user = getCurrentUser() || {};
-        const authUid = authUser.uid;
-
-        if (getUserId(user) !== authUid) {
-          localStorage.setItem(
-            "currentUser",
-            JSON.stringify({
-              ...user,
-              id: authUid,
-              uid: authUid,
-              email: user.email || authUser.email || "",
-              name: user.name || authUser.displayName || "Khách hàng",
-              avatar: user.avatar || authUser.photoURL || "",
-            }),
-          );
-        }
-
-        clearLegacyOrderCaches(authUid);
-        orders = [];
-        filtered = [];
-        applyFilter();
-
-        unsubscribeOrdersSnapshot = db
-          .collection("orders")
-          .where("userId", "==", authUid)
-          .onSnapshot(
-            (snapshot) => {
-              const remoteOrders = snapshot.docs.map((doc) =>
-                normalizeOrder({ id: doc.id, ...doc.data() }, doc.id),
-              );
-
-              remoteOrders.sort((a, b) => {
-                const left = getOrderCreatedTime(a);
-                const right = getOrderCreatedTime(b);
-                return right - left;
-              });
-
-              orders = remoteOrders;
-              const key = getOrderStorageKey(authUid);
-              localStorage.setItem(key, JSON.stringify(orders));
-              filtered = [...orders];
-              applyFilter();
-            },
-            (error) => {
-              console.error("Firestore orders listener failed:", error);
-            },
-          );
-      });
-    })
-    .catch((error) => {
-      console.warn("Không thể lắng nghe đơn hàng Firebase:", error.message);
-    });
+  loadOrdersFromApi();
 }
 
 // ─── CART COUNT SYNC (from main site) ───────
@@ -574,7 +546,7 @@ function renderList() {
       const paymentStatus =
         o.payment?.status || o.paymentStatus || "Chờ xác nhận";
       const payIcon = PAY_ICON[paymentMethod] || "fa-credit-card";
-      const canCancel = ["Chờ xác nhận", "Đã xác nhận"].includes(o.status);
+      const canCancel = canCancelOrder(o.status);
       const isDelivered = o.status === "Đã giao hàng thành công";
       const isShipping = o.status === "Đang giao hàng";
       const orderDate = fmtDate(getOrderDateValue(o), fmtDate(new Date()));
@@ -765,7 +737,7 @@ function openDetail(id) {
   $("sumTotal").textContent = fmt(orderTotal(o));
 
   // Footer buttons
-  const canCancel = ["Chờ xác nhận", "Đã xác nhận"].includes(o.status);
+  const canCancel = canCancelOrder(o.status);
   const isDelivered = o.status === "Đã giao hàng thành công";
   const isShipping = o.status === "Đang giao hàng";
   $("modalFooter").innerHTML = `
@@ -952,18 +924,29 @@ $("cancelYes").addEventListener("click", async () => {
   const orderId = cancelId;
   const user = getCurrentUser();
   const userId = getUserId(user);
+  const reason = $("cancelReason").value;
 
-  orders = orders.filter((x) => x.id !== orderId);
-  filtered = filtered.filter((x) => x.id !== orderId);
+  const updated = await cancelOrderInApi(orderId, reason);
+  if (!updated) {
+    toast("Không thể hủy đơn hàng. Vui lòng thử lại.", "error");
+    return;
+  }
+
+  const cancelledOrder = {
+    ...o,
+    status: "Đã hủy",
+    cancellationReason: reason,
+    timeline: buildTimelineForStatus("Đã hủy"),
+  };
+  orders = orders.map((item) => (item.id === orderId ? cancelledOrder : item));
+  filtered = filtered.map((item) => (item.id === orderId ? cancelledOrder : item));
   const storageKey = getOrderStorageKey(userId);
   localStorage.setItem(storageKey, JSON.stringify(orders));
 
   hideModal("cancelBackdrop");
   applyFilter();
 
-  await deleteOrderFromFirestore(orderId);
-
-  toast(`Đã hủy và xóa đơn hàng ${orderId} thành công!`, "info");
+  toast(`Đã hủy đơn hàng ${orderId} thành công!`, "info");
   cancelId = null;
 });
 
@@ -1008,8 +991,21 @@ function reviewOrder(id) {
     toast("Bạn đã đánh giá đơn hàng này rồi!", "info");
     return;
   }
-  toast("Mở trang đánh giá sản phẩm...", "info");
-  // window.location.href = `review.html?order=${id}`;
+
+  const item = Array.isArray(o.items) ? o.items[0] : null;
+  if (!item || !item.name) {
+    toast("Đơn hàng chưa có thông tin sản phẩm để đánh giá.", "warning");
+    return;
+  }
+
+  const params = new URLSearchParams({
+    name: item.name,
+    review: "1",
+  });
+  if (item.id || item.productId) {
+    params.set("id", item.id || item.productId);
+  }
+  window.location.href = `detail.html?${params.toString()}`;
 }
 
 function trackOrder() {

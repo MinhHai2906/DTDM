@@ -14,13 +14,6 @@
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/sign.css" />
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-
-    <!-- Firebase Config -->
-    <script src="js/firebase-config.js"></script>
     <style>
       .auth-container {
         max-width: 450px;
@@ -490,18 +483,23 @@
       updateCartCount();
     </script>
 
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
     <!-- Google Auth Manager -->
     <script src="js/google-auth.js"></script>
 
     <!-- Initialize Auth -->
     <script>
       document.addEventListener("DOMContentLoaded", async () => {
-        // Khởi tạo Google Auth
-        await googleAuth.initialize();
-
-        // Render nút Google Sign-In
-        googleAuth.renderSignInButton("googleSignInButton", "signin");
-        console.log(" Auth system ready");
+        try {
+          await googleAuth.initialize();
+          googleAuth.renderSignInButton("googleSignInButton", "signin");
+        } catch (error) {
+          console.error("Auth system initialization failed:", error);
+          showError(error.message || "Không thể khởi tạo Firebase Authentication.");
+        }
       });
     </script>
   </body>

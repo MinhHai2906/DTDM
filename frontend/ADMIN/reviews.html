@@ -221,9 +221,6 @@
       }
     </style>
 
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   </head>
   <body>
     <div class="sidebar">
@@ -243,7 +240,7 @@
 
       <div class="card">
         <div id="statusLine" class="status-line">
-          Đang tải bình luận từ Firebase...
+          Đang tải bình luận từ API...
         </div>
         <div class="table-wrap">
           <table>
@@ -286,18 +283,7 @@
     </div>
 
     <script>
-      const firebaseConfig = {
-        apiKey: "AIzaSyDk1XTVn68McS02jMIXnyQ3bqtpLF3L1XQ",
-        authDomain: "web-dienthoai0-dtdm.firebaseapp.com",
-        projectId: "web-dienthoai0-dtdm",
-        storageBucket: "web-dienthoai0-dtdm.firebasestorage.app",
-        messagingSenderId: "102142538462",
-        appId: "1:102142538462:web:8c2c6c4637a54304ef484f",
-      };
-
-      firebase.initializeApp(firebaseConfig);
-      const auth = firebase.auth();
-      const db = firebase.firestore();
+      const API_BASE_URL = "http://localhost:3001";
 
       const statusLine = document.getElementById("statusLine");
       const updatedAtText = document.getElementById("updatedAt");
@@ -342,11 +328,18 @@
         pendingDeleteButton = null;
       }
 
-      function getPermissionErrorMessage(error, fallback) {
-        if (error?.code === "permission-denied") {
-          return "Bạn không có quyền đọc bình luận. Hãy đăng nhập tài khoản admin.";
+      async function apiFetch(url, options = {}) {
+        const response = await fetch(url, {
+          headers: { "Content-Type": "application/json" },
+          ...options,
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || "Yêu cầu thất bại.");
         }
-        return fallback;
+
+        return data;
       }
 
       function toDateObject(raw) {
@@ -413,18 +406,16 @@
         userMapByUid.clear();
 
         try {
-          const snapshot = await db.collection("users").get();
-          snapshot.forEach((doc) => {
-            const data = doc.data() || {};
-            const uid = data.uid || doc.id;
+          const users = await apiFetch(`${API_BASE_URL}/api/users`);
+          if (!Array.isArray(users)) return;
+
+          users.forEach((user) => {
+            const uid = user.uid || user.id;
             if (!uid) return;
-            userMapByUid.set(uid, data);
+            userMapByUid.set(uid, user);
           });
         } catch (error) {
-          console.warn(
-            "Không tải được danh sách users để map tài khoản:",
-            error,
-          );
+          console.warn("Không tải được danh sách users để map tài khoản:", error);
         }
       }
 
@@ -513,8 +504,9 @@
         }
 
         try {
-          await db.collection("reviews").doc(reviewId).delete();
+          await apiFetch(`${API_BASE_URL}/api/reviews/${reviewId}`, { method: "DELETE" });
           showToast("Đã xóa bình luận thành công");
+          await loadReviews();
         } catch (error) {
           console.error("Xóa bình luận thất bại:", error);
           showToast("Không thể xóa bình luận", true);
@@ -524,91 +516,46 @@
         }
       });
 
-      function subscribeReviewsRealtime() {
-        showStatus("Đang đồng bộ bình luận từ Firestore realtime...");
-
-        db.collection("reviews").onSnapshot(
-          (snapshot) => {
-            const allReviews = snapshot.docs.map((doc) => ({
-              id: doc.id,
-              ...doc.data(),
-            }));
-
-            const sortedReviews = sortReviews(allReviews);
-            renderReviews(sortedReviews);
-
-            const nowText = new Date().toLocaleString("vi-VN");
-            updatedAtText.textContent = `Đã đồng bộ lúc: ${nowText} | Tổng bình luận: ${sortedReviews.length}`;
-            showStatus(`Đang hiển thị ${sortedReviews.length} bình luận.`);
-          },
-          (error) => {
-            console.error("Không thể tải bình luận:", error);
-            showStatus(
-              getPermissionErrorMessage(
-                error,
-                "Lỗi khi kết nối Firestore. Vui lòng kiểm tra quyền đọc collection reviews.",
-              ),
-              true,
-            );
-            reviewsBody.innerHTML =
-              '<tr class="empty-row"><td colspan="7">Không thể tải dữ liệu bình luận.</td></tr>';
-          },
-        );
-      }
-
-      async function ensureAdminAccess(user) {
-        if (!user) return false;
-
-        const idTokenResult = await user.getIdTokenResult(true);
-        if (
-          idTokenResult?.claims?.admin === true ||
-          idTokenResult?.claims?.role === "admin"
-        ) {
-          return true;
-        }
+      async function loadReviews() {
+        showStatus("Đang đồng bộ bình luận từ API...");
 
         try {
-          const userDoc = await db.collection("users").doc(user.uid).get();
-          return userDoc.exists && userDoc.data()?.role === "admin";
-        } catch {
-          return false;
+          const reviews = await apiFetch(`${API_BASE_URL}/api/reviews`);
+          const sortedReviews = sortReviews(Array.isArray(reviews) ? reviews : []);
+          renderReviews(sortedReviews);
+
+          const nowText = new Date().toLocaleString("vi-VN");
+          updatedAtText.textContent = `Đã đồng bộ lúc: ${nowText} | Tổng bình luận: ${sortedReviews.length}`;
+          showStatus(`Đang hiển thị ${sortedReviews.length} bình luận.`);
+        } catch (error) {
+          console.error("Không thể tải bình luận:", error);
+          showStatus("Lỗi khi tải bình luận từ backend.", true);
+          reviewsBody.innerHTML =
+            '<tr class="empty-row"><td colspan="7">Không thể tải dữ liệu bình luận.</td></tr>';
         }
       }
 
-      auth.onAuthStateChanged(async (user) => {
-        if (!user) {
+      function checkAdminSession() {
+        const session = JSON.parse(localStorage.getItem("mobistore_auth") || "null");
+        if (!session || !session.user) {
           showStatus("Bạn cần đăng nhập admin trước khi xem bình luận.", true);
           reviewsBody.innerHTML =
             '<tr class="empty-row"><td colspan="7">Bạn chưa đăng nhập admin.</td></tr>';
           setTimeout(() => {
             window.location.href = "login.html";
           }, 900);
-          return;
+          return false;
         }
+        return true;
+      }
 
-        showStatus("Đang kiểm tra quyền admin...");
-
-        let isAdmin = false;
-        try {
-          isAdmin = await ensureAdminAccess(user);
-        } catch (error) {
-          console.error("Lỗi kiểm tra quyền admin:", error);
-        }
-
-        if (!isAdmin) {
-          showStatus(
-            "Tài khoản này không có quyền admin để xem bình luận.",
-            true,
-          );
-          reviewsBody.innerHTML =
-            '<tr class="empty-row"><td colspan="7">Tài khoản hiện tại không có quyền admin.</td></tr>';
-          showToast("Tài khoản không có quyền admin", true);
-          return;
-        }
-
+      async function initReviewsPage() {
+        if (!checkAdminSession()) return;
         await loadUsersDirectory();
-        subscribeReviewsRealtime();
-      });
+        await loadReviews();
+      }
+
+      initReviewsPage();
     </script>
   </body>
 </html>

@@ -1,31 +1,26 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  collection,
-  getFirestore,
-  onSnapshot,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDk1XTVn68McS02jMIXnyQ3bqtpLF3L1XQ",
-  authDomain: "web-dienthoai0-dtdm.firebaseapp.com",
-  projectId: "web-dienthoai0-dtdm",
-  storageBucket: "web-dienthoai0-dtdm.firebasestorage.app",
-  messagingSenderId: "102142538462",
-  appId: "1:102142538462:web:8c2c6c4637a54304ef484f",
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const API_BASE_URL = "http://localhost:3001";
 
 let products = [];
 let searchKeyword = "";
 
+function getTimestampMs(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  if (value && typeof value.seconds === "number") {
+    return value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1000000);
+  }
+  return 0;
+}
+
 // ========== DOM READY ==========
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
   console.log(" Promotion page loaded");
 
-  // Đồng bộ sản phẩm theo Firestore để ảnh luôn cập nhật theo Admin.
-  subscribeProducts();
+  await loadProductsFromApi();
 
   // Setup countdown timer
   startCountdown();
@@ -46,36 +41,41 @@ document.addEventListener("DOMContentLoaded", function () {
   setupBackToTop();
 });
 
-function subscribeProducts() {
-  onSnapshot(
-    collection(db, "products"),
-    (snapshot) => {
-      products = snapshot.docs.map((doc) => {
-        const data = doc.data() || {};
+async function loadProductsFromApi() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/products`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
 
-        return {
-          id: doc.id,
-          name: data.name || "Sản phẩm chưa có tên",
-          price: Number(data.price) || 0,
-          brand: data.brand || "",
-          category: data.category || "",
-          image: resolveImageUrl(data.image),
-          isSale: Boolean(data.isSale),
-          discount: Number(data.discount) || 0,
-          updatedAtMs: getProductActivityValue(data),
-        };
-      });
+    const items = await response.json();
+    products = Array.isArray(items)
+      ? items.map((item) => ({
+          id: item.id,
+          name: item.name || "Sản phẩm chưa có tên",
+          price: Number(item.price) || 0,
+          brand: item.brand || "",
+          category: item.category || "",
+          image: resolveImageUrl(item.image),
+          isSale: Boolean(item.isSale),
+          discount: Number(item.discount) || 0,
+          updatedAtMs: Math.max(
+            Number(item.updatedAtMs) || 0,
+            getTimestampMs(item.updatedAt),
+            Number(item.createdAtMs) || 0,
+            getTimestampMs(item.createdAt),
+          ),
+        }))
+      : [];
 
-      renderFlashSaleProducts();
-    },
-    (error) => {
-      console.error("Không thể đọc sản phẩm từ Firebase:", error);
-      const container = document.getElementById("flash-sale-products");
-      if (container) {
-        container.innerHTML = "<p>Không thể tải dữ liệu khuyến mãi.</p>";
-      }
-    },
-  );
+    renderFlashSaleProducts();
+  } catch (error) {
+    console.error("Không thể đọc sản phẩm từ API:", error);
+    const container = document.getElementById("flash-sale-products");
+    if (container) {
+      container.innerHTML = "<p>Không thể tải dữ liệu khuyến mãi.</p>";
+    }
+  }
 }
 
 function resolveImageUrl(imagePath) {
@@ -186,9 +186,6 @@ function createFlashSaleCard(product) {
       ? (product.price * (100 - product.discount)) / 100
       : product.price;
 
-  // Random progress bar percentage
-  const soldPercent = Math.floor(Math.random() * 60) + 30;
-
   return `
         <div class="product-card flash-sale-card" data-id="${product.id}" data-name="${String(product.name || "").replace(/"/g, "&quot;")}">
             <div class="product-badge">
@@ -205,12 +202,6 @@ function createFlashSaleCard(product) {
                 <div class="product-price">
                     <span class="current-price">${formatPrice(discountedPrice)}</span>
                     <span class="old-price">${formatPrice(product.price)}</span>
-                </div>
-                <div class="sold-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${soldPercent}%"></div>
-                    </div>
-                    <span class="sold-text">Đã bán ${soldPercent}%</span>
                 </div>
                 <div class="product-actions">
                     <button class="btn-cart" onclick="window.addToCart('${String(product.id).replace(/'/g, "\\'")}')">

@@ -4,40 +4,9 @@
     <meta charset="UTF-8" />
     <title>Import Users</title>
     <link rel="stylesheet" href="style.css" />
-    <script type="module">
-      // Import Firebase modules
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-      import {
-        getAuth,
-        signInWithEmailAndPassword,
-      } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-      import {
-        getFirestore,
-        collection,
-        addDoc,
-        query,
-        where,
-        getDocs,
-      } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-
-      // Firebase config
-      const firebaseConfig = {
-        apiKey: "AIzaSyDk1XTVn68McS02jMIXnyQ3bqtpLF3L1XQ",
-        authDomain: "web-dienthoai0-dtdm.firebaseapp.com",
-        projectId: "web-dienthoai0-dtdm",
-        storageBucket: "web-dienthoai0-dtdm.firebasestorage.app",
-        messagingSenderId: "102142538462",
-        appId: "1:102142538462:web:8c2c6c4637a54304ef484f",
-      };
-
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-      const auth = getAuth(app);
-
+    <script>
       const statusLine = document.getElementById("statusLine");
 
-      // Show status message
       function showStatus(message, type) {
         statusLine.textContent = message;
         statusLine.style.color =
@@ -49,37 +18,24 @@
         setTimeout(() => (statusLine.textContent = ""), 10000);
       }
 
-      // Import users (this is a workaround - in production use backend)
       window.importUsers = async function () {
-        // This won't work client-side for security reasons
-        // You need to use Firebase Admin SDK on a server
-
         showStatus(
-          "Không thể import users từ client-side vì lý do bảo mật. Vui lòng sử dụng Firebase Admin SDK trên server hoặc Cloud Functions.",
+          "Không thể import users từ client-side vì lý do bảo mật. Hãy dùng API backend hoặc Firebase Admin SDK trên server.",
           "error",
-        );
-
-        // Alternative: Manually add users via Firebase Console
-        alert(
-          "Để import users hiện có:\n1. Mở Firebase Console > Authentication > Users\n2. Copy thông tin users\n3. Thêm vào Firestore collection 'users' manually\n\nHoặc setup backend với Firebase Admin SDK.",
         );
       };
 
-      // Test connection
       async function testConnection() {
         try {
-          const testQuery = query(
-            collection(db, "users"),
-            where("uid", "!=", ""),
-          );
-          await getDocs(testQuery);
-          showStatus("Kết nối Firebase thành công", "success");
+          const response = await fetch("http://localhost:3001/api/health");
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "Backend API not available");
+          showStatus("Kết nối backend thành công", "success");
         } catch (error) {
-          showStatus("Lỗi kết nối Firebase: " + error.message, "error");
+          showStatus("Lỗi kết nối backend: " + error.message, "error");
         }
       }
 
-      // Load on page load
       testConnection();
     </script>
   </head>

@@ -81,9 +81,6 @@
         }
       }
     </style>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   </head>
   <body>
     <div class="sidebar">
@@ -132,21 +129,7 @@
     </div>
 
     <script>
-      const firebaseConfig = {
-        apiKey: "AIzaSyDk1XTVn68McS02jMIXnyQ3bqtpLF3L1XQ",
-        authDomain: "web-dienthoai0-dtdm.firebaseapp.com",
-        projectId: "web-dienthoai0-dtdm",
-        storageBucket: "web-dienthoai0-dtdm.firebasestorage.app",
-        messagingSenderId: "102142538462",
-        appId: "1:102142538462:web:8c2c6c4637a54304ef484f",
-      };
-
-      if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-      }
-
-      const auth = firebase.auth();
-      const db = firebase.firestore();
+      const API_BASE_URL = "http://localhost:3001";
 
       const statusLine = document.getElementById("statusLine");
       const revenueValue = document.getElementById("revenueValue");
@@ -177,94 +160,70 @@
         return status === "Đã giao hàng thành công" || status === "delivered";
       }
 
-      async function ensureAdminAccess(user) {
-        if (!user) return false;
+      async function fetchJson(url, options = {}) {
+        const response = await fetch(url, {
+          headers: {
+            "Content-Type": "application/json",
+            ...(options.headers || {}),
+          },
+          ...options,
+        });
 
-        const idTokenResult = await user.getIdTokenResult(true);
-        if (
-          idTokenResult?.claims?.admin === true ||
-          idTokenResult?.claims?.role === "admin"
-        ) {
-          return true;
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || "Yêu cầu thất bại.");
         }
 
+        return data;
+      }
+
+      async function loadDashboardData() {
         try {
-          const userDoc = await db.collection("users").doc(user.uid).get();
-          return userDoc.exists && userDoc.data()?.role === "admin";
-        } catch {
-          return false;
+          showStatus("Đang tải dữ liệu dashboard...");
+
+          const [orders, products, users] = await Promise.all([
+            fetchJson(`${API_BASE_URL}/api/orders`),
+            fetchJson(`${API_BASE_URL}/api/products`),
+            fetchJson(`${API_BASE_URL}/api/users`),
+          ]);
+
+          let revenue = 0;
+          let deliveredCount = 0;
+
+          (Array.isArray(orders) ? orders : []).forEach((order) => {
+            if (isDeliveredOrder(order.status)) {
+              deliveredCount += 1;
+              revenue += getOrderTotal(order);
+            }
+          });
+
+          revenueValue.textContent = fmtMoney(revenue);
+          revenueNote.textContent = `${deliveredCount} đơn giao thành công`;
+          productsValue.textContent = String(Array.isArray(products) ? products.length : 0);
+          usersValue.textContent = String(Array.isArray(users) ? users.length : 0);
+          showStatus("");
+        } catch (error) {
+          console.error("Dashboard load error:", error);
+          showStatus("Không thể tải dữ liệu dashboard từ API.", true);
         }
       }
 
-      function subscribeDashboardData() {
-        db.collection("orders").onSnapshot(
-          (snapshot) => {
-            let revenue = 0;
-            let deliveredCount = 0;
-
-            snapshot.forEach((doc) => {
-              const order = doc.data() || {};
-              if (isDeliveredOrder(order.status)) {
-                deliveredCount += 1;
-                revenue += getOrderTotal(order);
-              }
-            });
-
-            revenueValue.textContent = fmtMoney(revenue);
-            revenueNote.textContent = `${deliveredCount} đơn giao thành công`;
-          },
-          (error) => {
-            console.error("Lỗi tải đơn hàng:", error);
-            showStatus("Không thể tải doanh thu từ đơn hàng.", true);
-          },
-        );
-
-        db.collection("products").onSnapshot(
-          (snapshot) => {
-            productsValue.textContent = String(snapshot.size);
-          },
-          (error) => {
-            console.error("Lỗi tải sản phẩm:", error);
-            showStatus("Không thể tải số lượng sản phẩm.", true);
-          },
-        );
-
-        db.collection("users").onSnapshot(
-          (snapshot) => {
-            usersValue.textContent = String(snapshot.size);
-            showStatus("");
-          },
-          (error) => {
-            console.error("Lỗi tải người dùng:", error);
-            showStatus("Không thể tải số lượng người dùng.", true);
-          },
-        );
-      }
-
-      auth.onAuthStateChanged(async (user) => {
-        if (!user) {
+      function ensureAdminSession() {
+        const authState = localStorage.getItem("mobistore_auth");
+        if (!authState) {
           showStatus("Bạn cần đăng nhập admin để xem dashboard.", true);
           setTimeout(() => {
             window.location.href = "login.html";
           }, 900);
-          return;
+          return false;
         }
 
-        showStatus("Đang kiểm tra quyền admin...");
+        return true;
+      }
 
-        let isAdmin = false;
-        try {
-          isAdmin = await ensureAdminAccess(user);
-        } catch (error) {
-          console.error("Lỗi kiểm tra quyền admin:", error);
-        }
-
-        if (!isAdmin) {
-          showStatus("Tài khoản này không có quyền admin.", true);
-          return;
-        }
-
-        subscribeDashboardData();
+      document.addEventListener("DOMContentLoaded", () => {
+        if (!ensureAdminSession()) return;
+        loadDashboardData();
       });
     </script>
   </body>

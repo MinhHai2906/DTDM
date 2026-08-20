@@ -65,3 +65,17 @@ test("POST /api/products creates a new product", async () => {
   assert.equal(response.body.name, "Galaxy S24");
   assert.equal(response.body.brand, "Samsung");
 });
+
+test("ProductService falls back to demo products when Firestore is unavailable", async () => {
+  const service = new (require("../services/productService"))({
+    firestore: () => {
+      throw new Error("Firestore unavailable");
+    },
+  });
+
+  const products = await service.listProducts();
+
+  assert.ok(Array.isArray(products));
+  assert.ok(products.length > 0);
+  assert.equal(products[0].name, "iPhone 15");
+});

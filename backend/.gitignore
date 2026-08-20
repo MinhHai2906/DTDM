@@ -1,0 +1,6 @@
+node_modules/
+.env
+.env.*
+serviceAccountKey.json
+debug-product-load.js
+verify_google.js

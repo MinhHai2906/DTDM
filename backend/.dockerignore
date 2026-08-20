@@ -1,0 +1,9 @@
+node_modules
+npm-debug.log
+serviceAccountKey.json
+.env
+.env.*
+debug-product-load.js
+verify_google.js
+tests
+.git

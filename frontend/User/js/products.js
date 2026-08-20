@@ -1,18 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  collection,
-  getFirestore,
-  onSnapshot,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDk1XTVn68McS02jMIXnyQ3bqtpLF3L1XQ",
-  authDomain: "web-dienthoai0-dtdm.firebaseapp.com",
-  projectId: "web-dienthoai0-dtdm",
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const API_BASE_URL = "http://localhost:3001";
 
 let products = [];
 let currentCategory = "all";
@@ -23,8 +9,21 @@ let filteredProducts = [];
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
 let searchKeyword = "";
 
-document.addEventListener("DOMContentLoaded", () => {
-  subscribeProductsFromFirebase();
+function getTimestampMs(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  if (value && typeof value.seconds === "number") {
+    return value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1000000);
+  }
+  return 0;
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadProductsFromApi();
   setupCategoryFilters();
   setupSortFilter();
   setupLoadMore();
@@ -34,52 +33,49 @@ document.addEventListener("DOMContentLoaded", () => {
   setupBackToTop();
 });
 
-function subscribeProductsFromFirebase() {
-  onSnapshot(
-    collection(db, "products"),
-    (querySnapshot) => {
-      products = querySnapshot.docs.map((doc) => {
-        const data = doc.data() || {};
+async function loadProductsFromApi() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/products`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
 
-        return {
-          id: doc.id,
-          name: data.name || "Sản phẩm chưa có tên",
-          price: Number(data.price) || 0,
-          brand: data.brand || "PhoneStore",
-          category: data.category || "all",
-          image: resolveImageUrl(data.image),
-          isNew: Boolean(data.isNew),
-          isSale: Boolean(data.isSale),
-          discount: Number(data.discount) || 0,
-          updatedAt: getProductActivityValue(data),
-        };
-      });
+    const items = await response.json();
+    products = Array.isArray(items)
+      ? items.map((item) => ({
+          id: item.id,
+          name: item.name || "Sản phẩm chưa có tên",
+          price: Number(item.price) || 0,
+          brand: item.brand || "PhoneStore",
+          category: item.category || "all",
+          image: resolveImageUrl(item.image),
+          isNew: Boolean(item.isNew),
+          isSale: Boolean(item.isSale),
+          discount: Number(item.discount) || 0,
+          updatedAt: Math.max(
+            Number(item.updatedAtMs) || 0,
+            getTimestampMs(item.updatedAt),
+            Number(item.createdAtMs) || 0,
+            getTimestampMs(item.createdAt),
+          ),
+        }))
+      : [];
 
-      filteredProducts = getSearchedProducts();
-      renderProducts();
-    },
-    (error) => {
-      console.error("Không thể load sản phẩm từ Firebase:", error);
-      showStatusMessage(
-        "Không thể tải dữ liệu sản phẩm. Vui lòng thử lại sau.",
-      );
-    },
-  );
+    filteredProducts = getSearchedProducts();
+    renderProducts();
+  } catch (error) {
+    console.error("Không thể load sản phẩm từ API:", error);
+    showStatusMessage("Không thể tải dữ liệu sản phẩm. Vui lòng thử lại sau.");
+  }
 }
 
 function getProductActivityValue(data) {
-  const updatedAtMs = Number(data?.updatedAtMs) || 0;
-  const updatedAt =
-    typeof data?.updatedAt?.toMillis === "function"
-      ? data.updatedAt.toMillis()
-      : 0;
-  const createdAtMs = Number(data?.createdAtMs) || 0;
-  const createdAt =
-    typeof data?.createdAt?.toMillis === "function"
-      ? data.createdAt.toMillis()
-      : 0;
-
-  return Math.max(updatedAtMs, updatedAt, createdAtMs, createdAt);
+  return Math.max(
+    Number(data?.updatedAtMs) || 0,
+    getTimestampMs(data?.updatedAt),
+    Number(data?.createdAtMs) || 0,
+    getTimestampMs(data?.createdAt),
+  );
 }
 
 function resolveImageUrl(imagePath) {

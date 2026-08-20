@@ -276,92 +276,88 @@
         font-size: 14px;
       }
     </style>
-    <script type="module">
-      // Import Firebase modules
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-      import {
-        getFirestore,
-        collection,
-        getDocs,
-        addDoc,
-        updateDoc,
-        deleteDoc,
-        doc,
-        query,
-        orderBy,
-      } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-      import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-      import {
-        getAuth,
-        createUserWithEmailAndPassword,
-        updateProfile,
-      } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-
-      // Firebase config
-      const firebaseConfig = {
-        apiKey: "AIzaSyDk1XTVn68McS02jMIXnyQ3bqtpLF3L1XQ",
-        authDomain: "web-dienthoai0-dtdm.firebaseapp.com",
-        projectId: "web-dienthoai0-dtdm",
-        storageBucket: "web-dienthoai0-dtdm.firebasestorage.app",
-        messagingSenderId: "102142538462",
-        appId: "1:102142538462:web:8c2c6c4637a54304ef484f",
-      };
-
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-      const auth = getAuth(app);
+    <script>
+      const API_BASE_URL = "http://localhost:3001";
       let users = [];
       let editingUserId = null;
 
-      // DOM elements
-      const usersTable = document.getElementById("usersTable");
-      const userForm = document.getElementById("userForm");
-      const formTitle = document.getElementById("formTitle");
-      const cancelBtn = document.getElementById("cancelBtn");
-      const statusLine = document.getElementById("statusLine");
+      let usersTable = null;
+      let userForm = null;
+      let formTitle = null;
+      let cancelBtn = null;
+      let statusLine = null;
 
-      // Load users from Firestore
-      async function loadUsers() {
-        if (!auth.currentUser) {
-          showStatus(
-            "Vui lòng đăng nhập admin trước khi tải danh sách người dùng.",
-            "error",
-          );
-          return;
+      function initDomRefs() {
+        usersTable = document.getElementById("usersTable");
+        userForm = document.getElementById("userForm");
+        formTitle = document.getElementById("formTitle");
+        cancelBtn = document.getElementById("cancelBtn");
+        statusLine = document.getElementById("statusLine");
+      }
+
+      function formatDate(value) {
+        if (!value) return "N/A";
+
+        if (typeof value.toDate === "function") {
+          return value.toDate().toLocaleDateString("vi-VN");
         }
 
+        if (value._seconds) {
+          return new Date(value._seconds * 1000).toLocaleDateString("vi-VN");
+        }
+
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? "N/A" : date.toLocaleDateString("vi-VN");
+      }
+
+      function ensureAdminSession() {
+        if (!localStorage.getItem("mobistore_auth")) {
+          showStatus("Vui lòng đăng nhập admin trước khi tải danh sách người dùng.", "error");
+          setTimeout(() => {
+            window.location.href = "login.html";
+          }, 900);
+          return false;
+        }
+        return true;
+      }
+
+      async function fetchJson(url, options = {}) {
+        const response = await fetch(url, {
+          headers: {
+            "Content-Type": "application/json",
+            ...(options.headers || {}),
+          },
+          ...options,
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || "Yêu cầu thất bại.");
+        }
+
+        return data;
+      }
+
+      async function loadUsers() {
+        if (!ensureAdminSession()) return;
+
         try {
-          const q = query(
-            collection(db, "users"),
-            orderBy("createdAt", "desc"),
-          );
-          const querySnapshot = await getDocs(q);
-          users = [];
-          querySnapshot.forEach((doc) => {
-            users.push({ id: doc.id, ...doc.data() });
-          });
+          const data = await fetchJson(`${API_BASE_URL}/api/users`);
+          users = Array.isArray(data) ? data : [];
 
           if (users.length === 0) {
-            showStatus(
-              "Không có người dùng nào trong hệ thống. Người dùng mới sẽ được thêm tự động khi đăng ký.",
-              "info",
-            );
+            showStatus("Không có người dùng nào trong hệ thống.", "info");
           } else {
-            showStatus("", ""); // Clear status
+            showStatus("");
           }
 
           renderUsers();
         } catch (error) {
           console.error("Error loading users:", error);
-          showStatus(
-            "Lỗi khi tải danh sách người dùng: " + error.message,
-            "error",
-          );
+          showStatus("Lỗi khi tải danh sách người dùng: " + error.message, "error");
         }
       }
 
-      // Render users table
       function renderUsers() {
         const tbody = usersTable.querySelector("tbody");
         tbody.innerHTML = "";
@@ -369,51 +365,45 @@
         users.forEach((user) => {
           const row = document.createElement("tr");
           row.innerHTML = `
-                    <td>${user.uid || user.id}</td>
-                    <td>${user.displayName || user.name || "N/A"}</td>
-                    <td>${user.email}</td>
-                    <td>${user.role || "user"}</td>
-                    <td>${user.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString("vi-VN") : "N/A"}</td>
-                    <td class="table-actions">
-                        <button class="edit-btn" onclick="editUser('${user.id}')">Sửa</button>
-                        <button class="delete-btn" onclick="deleteUser('${user.id}')">Xóa</button>
-                    </td>
-                `;
+            <td>${user.uid || user.id}</td>
+            <td>${user.displayName || "N/A"}</td>
+            <td>${user.email || "N/A"}</td>
+            <td>${user.role || "user"}</td>
+            <td>${formatDate(user.createdAt)}</td>
+            <td class="table-actions">
+              <button class="edit-btn" onclick="editUser('${user.id}')">Sửa</button>
+              <button class="delete-btn" onclick="deleteUser('${user.id}')">Xóa</button>
+            </td>
+          `;
           tbody.appendChild(row);
         });
       }
 
-      // Show form for adding/editing
       function showForm(user = null) {
-        formTitle.textContent = user
-          ? "Chỉnh sửa người dùng"
-          : "Thêm người dùng";
+        formTitle.textContent = user ? "Chỉnh sửa người dùng" : "Thêm người dùng";
         editingUserId = user ? user.id : null;
 
         const passwordGroup = document.getElementById("passwordGroup");
 
         if (user) {
-          document.getElementById("userName").value =
-            user.displayName || user.name || "";
+          document.getElementById("userName").value = user.displayName || "";
           document.getElementById("userEmail").value = user.email || "";
           document.getElementById("userRole").value = user.role || "user";
-          passwordGroup.style.display = "none"; // Hide password when editing
+          passwordGroup.style.display = "none";
         } else {
           userForm.reset();
-          passwordGroup.style.display = "block"; // Show password when adding
+          passwordGroup.style.display = "block";
         }
 
         userForm.style.display = "block";
       }
 
-      // Hide form
       function hideForm() {
         userForm.style.display = "none";
         editingUserId = null;
         userForm.reset();
       }
 
-      // Save user
       async function saveUser() {
         const name = document.getElementById("userName").value.trim();
         const email = document.getElementById("userEmail").value.trim();
@@ -427,78 +417,58 @@
 
         try {
           if (editingUserId) {
-            // Update existing user
-            await updateDoc(doc(db, "users", editingUserId), {
-              displayName: name,
-              email: email,
-              role: role,
-              updatedAt: new Date(),
+            await fetchJson(`${API_BASE_URL}/api/users/${editingUserId}`, {
+              method: "PATCH",
+              body: JSON.stringify({
+                displayName: name,
+                email,
+                role,
+              }),
             });
             showStatus("Cập nhật người dùng thành công", "success");
           } else {
-            // Create new user in Auth and Firestore
-            const userCredential = await createUserWithEmailAndPassword(
-              auth,
-              email,
-              password,
-            );
-            const user = userCredential.user;
-
-            await updateProfile(user, { displayName: name });
-
-            await addDoc(collection(db, "users"), {
-              uid: user.uid,
-              displayName: name,
-              email: email,
-              role: role,
-              createdAt: new Date(),
-              updatedAt: new Date(),
+            await fetchJson(`${API_BASE_URL}/api/users`, {
+              method: "POST",
+              body: JSON.stringify({
+                displayName: name,
+                email,
+                password,
+                role,
+              }),
             });
             showStatus("Thêm người dùng thành công", "success");
           }
+
           hideForm();
-          loadUsers();
+          await loadUsers();
         } catch (error) {
           console.error("Error saving user:", error);
           showStatus("Lỗi khi lưu người dùng: " + error.message, "error");
         }
       }
 
-      // Edit user
       window.editUser = function (id) {
-        const user = users.find((u) => u.id === id);
+        const user = users.find((item) => item.id === id);
         if (user) showForm(user);
       };
 
-      // Delete user
       window.deleteUser = async function (id) {
-        if (
-          !(await showConfirm(
-            "Bạn có chắc muốn xóa người dùng này? Hành động này sẽ xóa hoàn toàn tài khoản khỏi hệ thống.",
-          ))
-        )
+        if (!(await showConfirm("Bạn có chắc muốn xóa người dùng này? Hành động này sẽ xóa tài khoản khỏi hệ thống."))) {
           return;
+        }
 
         try {
-          await deleteDoc(doc(db, "users", id));
+          await fetchJson(`${API_BASE_URL}/api/users/${id}`, {
+            method: "DELETE",
+          });
           showPopup("Người dùng đã bị xóa", "success", "");
-
-          try {
-            await fetch(`http://localhost:3001/api/users/${id}`, {
-              method: "DELETE",
-            });
-          } catch (backendError) {
-            console.warn("Backend delete failed:", backendError);
-          }
-
-          loadUsers();
+          await loadUsers();
         } catch (error) {
           console.error("Error deleting user:", error);
           showPopup("Lỗi khi xóa người dùng", "error", error.message);
         }
       };
 
-      // Show status message
       function showToast(message, type = "info") {
         const toast = document.createElement("div");
         toast.className = `toast ${type}`;
@@ -571,29 +541,33 @@
         });
       }
 
-      function showStatus(message, type) {
+      function showStatus(message, type = "info") {
+        if (!statusLine) return;
+
         if (!message) {
           statusLine.textContent = "";
           return;
         }
-        showToast(message, type || "info");
+
+        statusLine.textContent = message;
+        statusLine.style.color = type === "error" ? "#fca5a5" : type === "success" ? "#86efac" : "#93c5fd";
       }
 
-      // Event listeners
-      cancelBtn.addEventListener("click", hideForm);
-      document.getElementById("saveBtn").addEventListener("click", saveUser);
+      document.addEventListener("DOMContentLoaded", () => {
+        initDomRefs();
 
-      // Load users only after Firebase Auth restores the admin session
-      onAuthStateChanged(auth, (user) => {
-        if (!user) {
-          showStatus(
-            "Vui lòng đăng nhập admin để xem danh sách người dùng.",
-            "error",
-          );
-          return;
+        if (cancelBtn) {
+          cancelBtn.addEventListener("click", hideForm);
         }
 
-        loadUsers();
+        const saveBtn = document.getElementById("saveBtn");
+        if (saveBtn) {
+          saveBtn.addEventListener("click", saveUser);
+        }
+
+        if (ensureAdminSession()) {
+          loadUsers();
+        }
       });
     </script>
   </head>

@@ -15,6 +15,6 @@
     "cors": "^2.8.5"
   },
   "devDependencies": {
-    "supertest": "^7.4.6"
+    "supertest": "^7.2.2"
   }
 }

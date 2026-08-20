@@ -233,9 +233,6 @@
       }
     </style>
 
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   </head>
   <body>
     <div class="sidebar">
@@ -356,7 +353,7 @@
           </thead>
           <tbody id="list">
             <tr>
-              <td colspan="7">Đang tải dữ liệu từ Firebase...</td>
+              <td colspan="7">Đang tải dữ liệu từ API...</td>
             </tr>
           </tbody>
         </table>
@@ -364,15 +361,7 @@
     </div>
 
     <script>
-      const firebaseConfig = {
-        apiKey: "AIzaSyDk1XTVn68McS02jMIXnyQ3bqtpLF3L1XQ",
-        authDomain: "web-dienthoai0-dtdm.firebaseapp.com",
-        projectId: "web-dienthoai0-dtdm",
-        storageBucket: "web-dienthoai0-dtdm.firebasestorage.app",
-        messagingSenderId: "102142538462",
-        appId: "1:102142538462:web:8c2c6c4637a54304ef484f",
-      };
-
+      const API_BASE_URL = "http://localhost:3001";
       const CATEGORY_NAME_MAP = {
         phone: "Điện thoại",
         headphone: "Tai nghe",
@@ -383,11 +372,6 @@
         speaker: "Loa",
       };
 
-      const app = firebase.apps.length
-        ? firebase.app()
-        : firebase.initializeApp(firebaseConfig);
-      const auth = firebase.auth();
-      const db = firebase.firestore();
       const list = document.getElementById("list");
       const submitButton = document.getElementById("submitButton");
       const formStatus = document.getElementById("formStatus");
@@ -404,24 +388,13 @@
           CATEGORY_NAME_MAP[categoryInput.value] || categoryNameInput.value;
       });
 
-      function getProductCreatedAtValue(product) {
-        const createdAtMs = Number(product?.createdAtMs) || 0;
-        const createdAt =
-          typeof product?.createdAt?.toMillis === "function"
-            ? product.createdAt.toMillis()
-            : 0;
-
-        return Math.max(createdAtMs, createdAt);
-      }
-
-      function getSortedSnapshotDocs(snapshot) {
-        return [...snapshot.docs].sort((docA, docB) => {
-          const timeDiff =
-            getProductCreatedAtValue(docB.data()) -
-            getProductCreatedAtValue(docA.data());
-          if (timeDiff !== 0) return timeDiff;
-          return String(docB.id).localeCompare(String(docA.id));
-        });
+      function redirectToLoginIfNeeded() {
+        const storedAdmin = JSON.parse(localStorage.getItem("mobistore_auth") || "null");
+        if (!storedAdmin || !storedAdmin.user) {
+          window.location.href = "login.html";
+          return false;
+        }
+        return true;
       }
 
       function resolveImageUrl(imagePath) {
@@ -471,6 +444,20 @@
         return Object.entries(specs)
           .map(([key, value]) => `${key}: ${value}`)
           .join("\n");
+      }
+
+      async function apiFetch(url, options = {}) {
+        const response = await fetch(url, {
+          headers: { "Content-Type": "application/json" },
+          ...options,
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || "Yêu cầu thất bại.");
+        }
+
+        return data;
       }
 
       async function getFormData() {
@@ -552,48 +539,24 @@
         categoryNameInput.value = CATEGORY_NAME_MAP.phone;
       }
 
-      async function saveProduct() {
+      async function loadProducts() {
         try {
-          const formData = await getFormData();
-          const productDocId =
-            editingProductId || makeProductDocId(formData.name, formData.brand);
-          const existingProduct = editingProductId
-            ? productCache.get(editingProductId) || {}
-            : {};
-          submitButton.disabled = true;
-          submitButton.textContent = editingProductId
-            ? "Đang cập nhật..."
-            : "Đang lưu...";
+          const products = await apiFetch(`${API_BASE_URL}/api/products`);
+          list.innerHTML = "";
+          productCache = new Map();
 
-          await db
-            .collection("products")
-            .doc(productDocId)
-            .set(
-              {
-                ...existingProduct,
-                ...formData,
-                createdAtMs: Number(existingProduct.createdAtMs) || Date.now(),
-                updatedAtMs: Date.now(),
-                createdAt:
-                  existingProduct.createdAt ||
-                  firebase.firestore.FieldValue.serverTimestamp(),
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-              },
-              { merge: true },
-            );
+          if (!Array.isArray(products) || products.length === 0) {
+            list.innerHTML = '<tr><td colspan="7">Chưa có sản phẩm nào.</td></tr>';
+            return;
+          }
 
-          alert(
-            editingProductId ? "Đã cập nhật sản phẩm." : "Đã thêm sản phẩm.",
-          );
-          resetForm();
+          products.forEach((product, index) => {
+            productCache.set(product.id, product);
+            list.innerHTML += buildProductRow(product, product.id, index + 1);
+          });
         } catch (error) {
-          alert(error.message || "Lưu sản phẩm thất bại.");
-          console.error(error);
-        } finally {
-          submitButton.disabled = false;
-          submitButton.textContent = editingProductId
-            ? "Cập nhật sản phẩm"
-            : "Lưu sản phẩm";
+          console.error("Lỗi đọc sản phẩm từ API:", error);
+          list.innerHTML = `<tr><td colspan="7">Không thể tải dữ liệu sản phẩm từ API.</td></tr>`;
         }
       }
 
@@ -627,49 +590,41 @@
     `;
       }
 
-      let unsubscribeProducts = null;
+      async function saveProduct() {
+        try {
+          const formData = await getFormData();
+          submitButton.disabled = true;
+          submitButton.textContent = editingProductId
+            ? "Đang cập nhật..."
+            : "Đang lưu...";
 
-      function startProductListener() {
-        if (unsubscribeProducts) {
-          unsubscribeProducts();
-          unsubscribeProducts = null;
-        }
-
-        unsubscribeProducts = db.collection("products").onSnapshot(
-          (snapshot) => {
-            list.innerHTML = "";
-            productCache = new Map();
-
-            if (snapshot.empty) {
-              list.innerHTML = `<tr><td colspan="7">Firebase đã kết nối nhưng chưa có sản phẩm nào.</td></tr>`;
-              return;
-            }
-
-            const sortedDocs = getSortedSnapshotDocs(snapshot);
-
-            sortedDocs.forEach((doc, index) => {
-              productCache.set(doc.id, doc.data());
-              list.innerHTML += buildProductRow(doc.data(), doc.id, index + 1);
+          if (editingProductId) {
+            await apiFetch(`${API_BASE_URL}/api/products/${editingProductId}`, {
+              method: "PUT",
+              body: JSON.stringify(formData),
             });
-          },
-          (error) => {
-            console.error("Lỗi đọc sản phẩm từ Firebase:", error);
-            list.innerHTML = `<tr><td colspan="7">Không thể tải dữ liệu từ Firebase.</td></tr>`;
-          },
-        );
-      }
+            alert("Đã cập nhật sản phẩm.");
+          } else {
+            const docId = makeProductDocId(formData.name, formData.brand);
+            await apiFetch(`${API_BASE_URL}/api/products`, {
+              method: "POST",
+              body: JSON.stringify({ ...formData, id: docId }),
+            });
+            alert("Đã thêm sản phẩm.");
+          }
 
-      auth.onAuthStateChanged((user) => {
-        if (!user) {
-          list.innerHTML = `<tr><td colspan="7">Bạn cần đăng nhập admin trước khi quản lý sản phẩm.</td></tr>`;
-          setTimeout(() => {
-            window.location.href = "login.html";
-          }, 800);
-          return;
+          resetForm();
+          await loadProducts();
+        } catch (error) {
+          alert(error.message || "Lưu sản phẩm thất bại.");
+          console.error(error);
+        } finally {
+          submitButton.disabled = false;
+          submitButton.textContent = editingProductId
+            ? "Cập nhật sản phẩm"
+            : "Lưu sản phẩm";
         }
-
-        startProductListener();
-      });
+      }
 
       function editProduct(id) {
         const product = productCache.get(id);
@@ -681,23 +636,29 @@
         fillForm(product, id);
       }
 
-      function deleteProduct(id) {
+      async function deleteProduct(id) {
         if (!confirm("Bạn có chắc muốn xóa sản phẩm này?")) return;
 
-        db.collection("products")
-          .doc(id)
-          .delete()
-          .then(() => {
-            if (editingProductId === id) resetForm();
-            alert("Đã xóa sản phẩm.");
-          })
-          .catch((error) => {
-            alert("Xóa sản phẩm thất bại.");
-            console.error(error);
+        try {
+          await apiFetch(`${API_BASE_URL}/api/products/${id}`, {
+            method: "DELETE",
           });
+          if (editingProductId === id) resetForm();
+          alert("Đã xóa sản phẩm.");
+          await loadProducts();
+        } catch (error) {
+          alert("Xóa sản phẩm thất bại.");
+          console.error(error);
+        }
       }
 
-      resetForm();
+      function initPage() {
+        if (!redirectToLoginIfNeeded()) return;
+        resetForm();
+        loadProducts();
+      }
+
+      initPage();
     </script>
   </body>
 </html>
