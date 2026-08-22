@@ -192,17 +192,14 @@ body {
     h1, h2, h3 {
         font-size: 16px;
     }
-
     table {
         font-size: 11px;
         overflow-x: auto;
         display: block;
     }
-
     th, td {
         padding: 8px 4px;
     }
-
     input, select, textarea, button {
         width: 100%;
         font-size: 16px !important;
