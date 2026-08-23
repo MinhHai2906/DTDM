@@ -11,8 +11,10 @@ function getTimestampMs(value) {
     const parsed = Date.parse(value);
     return Number.isNaN(parsed) ? 0 : parsed;
   }
-  if (value && typeof value.seconds === "number") {
-    return value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1000000);
+  if (value && (typeof value.seconds === "number" || typeof value._seconds === "number")) {
+    const seconds = typeof value.seconds === "number" ? value.seconds : value._seconds;
+    const nanoseconds = value.nanoseconds ?? value._nanoseconds ?? 0;
+    return seconds * 1000 + Math.floor(nanoseconds / 1000000);
   }
   return 0;
 }
@@ -123,14 +125,15 @@ function getFilteredProducts() {
   }
 
   if (currentCategory !== "all") {
-    filtered = filtered.filter(
-      (product) => product.category === currentCategory,
-    );
+      filtered = filtered.filter((product) => normalizeCategory(product.category) === currentCategory);
   }
 
   return filtered;
 }
 
+  function normalizeCategory(category) {
+    return String(category || "").trim().toLowerCase();
+  }
 function renderFilteredProducts() {
   const filteredProducts = getFilteredProducts();
   const newestProducts = filteredProducts.slice(0, 8);
