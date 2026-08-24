@@ -102,6 +102,44 @@ function removeFromCart(productId) {
 }
 
 let discountPercent = 0;
+let selectedCartIds = new Set();
+let hasSelectionInitialized = false;
+
+function syncSelectedCartIds(cart) {
+  const validIds = new Set(cart.map((item) => String(item.id)));
+  selectedCartIds = new Set(
+    [...selectedCartIds].filter((id) => validIds.has(id)),
+  );
+
+  if (!hasSelectionInitialized && cart.length > 0) {
+    cart.forEach((item) => selectedCartIds.add(String(item.id)));
+    hasSelectionInitialized = true;
+  }
+}
+
+function getSelectedCartItems(cart) {
+  syncSelectedCartIds(cart);
+  return cart.filter((item) => selectedCartIds.has(String(item.id)));
+}
+
+function toggleCartItemSelection(productId, checked) {
+  hasSelectionInitialized = true;
+  const id = String(productId);
+  if (checked) selectedCartIds.add(id);
+  else selectedCartIds.delete(id);
+  renderCartPage();
+}
+
+function toggleSelectAllCart(checked) {
+  hasSelectionInitialized = true;
+  const cart = getCart();
+  if (checked) cart.forEach((item) => selectedCartIds.add(String(item.id)));
+  else selectedCartIds.clear();
+  renderCartPage();
+}
+
+window.toggleCartItemSelection = toggleCartItemSelection;
+window.toggleSelectAllCart = toggleSelectAllCart;
 
 function applyVoucher() {
   const code = document.getElementById("voucherCode")?.value;
@@ -121,9 +159,9 @@ function applyVoucher() {
 }
 
 function checkout() {
-  const cart = getCart();
+  const cart = getSelectedCartItems(getCart());
   if (cart.length === 0) {
-    showModal("⚠️ Giỏ hàng của bạn đang trống!", false);
+    showModal("⚠️ Vui lòng chọn ít nhất 1 sản phẩm để thanh toán!", false);
     return;
   }
 
@@ -146,7 +184,7 @@ function checkout() {
 }
 
 function calculateSubtotal() {
-  const cart = getCart();
+  const cart = getSelectedCartItems(getCart());
   let subtotal = 0;
   cart.forEach((item) => {
     const price = Number(item.price) || 0;
@@ -218,6 +256,8 @@ function renderCartPage() {
     `;
 
   if (cart.length === 0) {
+    selectedCartIds.clear();
+    hasSelectionInitialized = false;
     container.innerHTML =
       userInfoHtml +
       `
@@ -233,20 +273,25 @@ function renderCartPage() {
 
   let subtotal = 0;
   let cartItemsHtml = "";
+  const selectedCart = getSelectedCartItems(cart);
+  const allSelected = cart.length > 0 && selectedCart.length === cart.length;
 
   cart.forEach((item) => {
     // Use properties stored in cart item (saved by main.js) as primary source
     const qty = item.quantity || 1;
     const price = Number(item.price) || 0;
     const total = price * qty;
-    subtotal += total;
-
     const safeId = String(item.id);
+    if (selectedCartIds.has(safeId)) subtotal += total;
+
     const imageSrc = item.image || "https://placehold.co/200x200?text=No+Image";
     const name = item.name || "Sản phẩm";
 
     cartItemsHtml += `
         <tr>
+          <td>
+            <input type="checkbox" class="cart-row-check" ${selectedCartIds.has(safeId) ? "checked" : ""} onchange="toggleCartItemSelection('${safeId}', this.checked)">
+          </td>
           <td>
             <div class="cart-product">
               <div class="cart-product-img"><img src="${imageSrc}" alt="${name}"></div>
@@ -293,7 +338,7 @@ function renderCartPage() {
             <div class="cart-items-section">
                 <table class="cart-table">
                     <thead>
-                        <tr><th>Sản phẩm</th><th>Đơn giá</th><th>Số lượng</th><th>Thành tiền</th><th></th></tr>
+                        <tr><th><input type="checkbox" class="cart-select-all" ${allSelected ? "checked" : ""} onchange="toggleSelectAllCart(this.checked)"></th><th>Sản phẩm</th><th>Đơn giá</th><th>Số lượng</th><th>Thành tiền</th><th></th></tr>
                     </thead>
                     <tbody>
                         ${cartItemsHtml}
@@ -302,6 +347,7 @@ function renderCartPage() {
             </div>
             <div class="cart-summary">
                 <h3>Đơn hàng</h3>
+                <div class="summary-row"><span>Đã chọn:</span><span>${selectedCart.length}/${cart.length} sản phẩm</span></div>
                 <div class="summary-row"><span>Tạm tính:</span><span>${formatPrice(subtotal)}</span></div>
                 <div class="summary-row"><span>Giảm giá:</span><span style="color:#ff4757">-${formatPrice(discount)}</span></div>
                 <div class="summary-row"><span>Phí ship:</span><span>${shipping === 0 ? "Free" : formatPrice(shipping)}</span></div>
