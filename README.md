@@ -83,63 +83,9 @@ Website-Store-Sells-Phones/
     ├── Dockerfile                # File cấu hình đóng gói container
     ├── firebase-admin.js         # Khởi tạo kết nối Firebase Admin SDK
     └── server.js                 # Entry point chạy máy chủ Express
-🚀 Cài Đặt & Chạy Cục Bộ (Local)
-1. Clone Mã Nguồn
-Bash
-git clone [https://github.com/NhatQuenTen/Thuong-Mai-Dien-Tu.git](https://github.com/NhatQuenTen/Thuong-Mai-Dien-Tu.git)
-cd Thuong-Mai-Dien-Tu
-2. Thiết Lập Backend
-Bash
-cd backend
-npm install
-Tạo file .env tại thư mục backend/:
 
-Đoạn mã
-PORT=3000
-CORS_ORIGIN=http://localhost:5500
-FIREBASE_PROJECT_ID=your-firebase-project-id
-Thêm file khóa cấu hình Firebase: backend/serviceAccountKey.json.
 
-Khởi động Backend server:
-
-Bash
-npm start
-# Server chạy tại http://localhost:3000 (Kiểm tra healthcheck tại /api/health)
-3. Thiết Lập Frontend
-Mở thư mục frontend/ bằng Live Server (hoặc mở trực tiếp file frontend/User/index.html trên trình duyệt).
-
-☁️ Quy Trình Triển Khai Lên Cloud (Deployment Flow)
-Hệ thống được triển khai tự động hóa thông qua các bước:
-
-Push Code: Đẩy mã nguồn hoàn thiện lên GitHub Repository.
-
-Build & Deploy Frontend: Kết nối GitHub với Render để tự động hóa build và host dưới dạng Static Site.
-
-Deploy Backend (Docker): Đóng gói ứng dụng Node.js/Express bằng Dockerfile và triển khai dạng Web Service trên Render.
-
-Configure Firebase: Cấu hình Cloud Firestore DB, Firebase Auth và Firebase Storage.
-
-Configure API & CORS: Cấu hình HTTPS REST API, biến môi trường (PORT, CORS_ORIGIN, kết nối Firebase Admin SDK).
-
-Testing & Monitoring: Kiểm thử các API Endpoint qua Postman/Jest và giám sát trạng thái hệ thống.
-
-Plaintext
-[Người dùng Browser] ──HTTPS/REST API──> [Render Static Frontend]
-                                                  │
-                                                  ▼
-[Firebase Services (Firestore/Auth)] <──SDK── [Render Backend Node.js/Express (Docker)]
-🔒 Bảo Mật Hệ Thống
-HTTPS Encryption: Mã hóa toàn bộ dữ liệu truyền tải qua đường truyền.
-
-CORS Management: Giới hạn tên miền frontend được phép gọi request đến API backend.
-
-Role-based Access Control (RBAC): Phân quyền truy cập nghiêm ngặt giữa khách hàng và Admin.
-
-Environment Variables: Bảo mật thông tin khóa bí mật (Secret Keys, Service Account Keys) bằng biến môi trường .env.
-
-Firebase Security Rules: Thiết lập quy tắc kiểm soát quyền đọc/ghi dữ liệu ở tầng cơ sở dữ liệu.
-
-🗓️ Đánh Giá & Hướng Phát Triển
+##🗓️ Đánh Giá & Hướng Phát Triển
 Hạn chế hiện tại
 Phân trang API chưa tối ưu triệt để cho tập dữ liệu cực lớn.
 
@@ -152,5 +98,5 @@ Tối ưu Caching (Redis) và Lazy Loading hình ảnh để cải thiện tốc
 
 Mở rộng kiến trúc Backend hỗ trợ Load Balancing khi lưu lượng tăng cao.
 
-📄 License & Thông Tin
+##📄 License & Thông Tin
 MIT License © 2026 PhoneStore Project - UTH
