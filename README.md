@@ -1,162 +1,85 @@
-# 📱 Website Cửa Hàng Bán Điện Thoại
+# 📱 Website Cửa Hàng Bán Điện Thoại PhoneStore (Ứng Dụng Web 3 Tầng Trên Cloud)
 
 <div align="center">
 
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen)
 ![Version](https://img.shields.io/badge/Version-2.0.0-blue)
+![Architecture](https://img.shields.io/badge/Architecture-3--Tier-orange)
+![Cloud Provider](https://img.shields.io/badge/Cloud-Render%20%7C%20Firebase-informational)
 
-**E-commerce bán điện thoại di động**
-
-[Website](https://web-dienthoai0-dtdm.web.app) • [GitHub](https://github.com/NhatQuenTen/Thuong-Mai-Dien-Tu)
+**Đề tài môn học: Triển khai ứng dụng web 3 tầng trên Cloud**  
+**Trường:** Đại học Giao thông Vận tải TP.HCM (UTH) | **GVHD:** Lê Quốc Tuấn | **Nhóm thực hiện:** Nhóm 3
 
 </div>
 
 ---
 
-## 😊 Giới Thiệu
+## 📌 Giới Thiệu
 
-Nền tảng e-commerce hoàn chỉnh để bán điện thoại. Gồm website khách hàng, dashboard quản trị, backend API, database Firestore trên Firebase.
-
----
-
-## ✨ Tính Năng
-
-### 🛍️ Khách Hàng
-- Đăng ký/Đăng nhập
-- Duyệt & tìm kiếm sản phẩm
-- Giỏ hàng & thanh toán
-- Quản lý đơn hàng
-- Đánh giá sản phẩm
-
-### 👨‍💼 Quản Trị Viên
-- Dashboard & thống kê
-- Quản lý sản phẩm
-- Quản lý đơn hàng
-- Quản lý khuyến mãi
-- Duyệt bình luận
+PhoneStore là hệ thống website thương mại điện tử kinh doanh điện thoại di động được thiết kế và triển khai hoàn chỉnh theo kiến trúc Web 3 tầng (3-Tier Architecture) độc lập trên môi trường Điện toán đám mây. Hệ thống đáp ứng hai phân hệ người dùng chính: Khách hàng (User) và Quản trị viên (Admin).
 
 ---
 
-## 🛠️ Công Nghệ
+## ✨ Tính Năng Cốt Lõi
 
-- **Frontend:** HTML5, CSS3, JavaScript, React
-- **Backend:** Node.js, Express.js
-- **Database:** Google Firestore
-- **Auth:** Firebase Auth
-- **Hosting:** Firebase Hosting
+### 🛍️ Phân Hệ Khách Hàng (User)
+- **Tài khoản:** Đăng ký, đăng nhập xác thực an toàn.
+- **Sản phẩm:** Duyệt sản phẩm, tìm kiếm, lọc theo thương hiệu/danh mục, xem chi tiết thông số kỹ thuật.
+- **Mua hàng:** Quản lý giỏ hàng, cập nhật số lượng và đặt hàng.
+- **Cá nhân & Đánh giá:** Xem lịch sử đơn hàng, gửi đánh giá/bình luận sản phẩm.
 
----
-
-## 💻 Yêu Cầu
-
-- Node.js v16+
-- npm v7+
-- Git v2.30+
-- Google Account (Firebase)
+### 👨‍💼 Phân Hệ Quản Trị Viên (Admin)
+- **Dashboard:** Thống kê tổng quan hệ thống.
+- **Quản lý CRUD:** Thêm, xem, cập nhật, xóa sản phẩm và danh mục.
+- **Quản lý đơn hàng:** Tiếp nhận, cập nhật trạng thái đơn hàng của khách hàng.
+- **Quản lý người dùng & Đánh giá:** Quản lý tài khoản người dùng và kiểm duyệt bình luận/đánh giá.
 
 ---
 
-## 🚀 Cài Đặt
+## 🛠️ Công Nghệ & Kiến Trúc 3 Tầng
 
-### 1. Clone
-```bash
-git clone https://github.com/NhatQuenTen/Thuong-Mai-Dien-Tu.git
-cd Website-Store-Sells-Phones
-```
+Hệ thống tuân thủ nguyên tắc phân tách trách nhiệm (Separation of Concerns) và giảm độ phụ thuộc (Loose Coupling):
 
-### 2. Cài Dependencies
-```bash
-cd backend && npm install
-cd ../frontend && npm install
-```
-
-### 3. Thiết lập Firebase
-```bash
-npm install -g firebase-tools
-firebase login
-firebase init
-```
-
-### 4. Cấu hình (.env files)
-```
-backend/.env:
-NODE_ENV=development
-PORT=3001
-FIREBASE_PROJECT_ID=your-id
-FIREBASE_PRIVATE_KEY=your-key
-FIREBASE_CLIENT_EMAIL=your-email
-
-frontend/.env.local:
-REACT_APP_FIREBASE_API_KEY=your-key
-REACT_APP_FIREBASE_PROJECT_ID=your-id
-```
-
-### 5. Chạy
-```bash
-# Terminal 1
-cd backend && npm start
-
-# Terminal 2
-cd frontend && npm start
-```
-
-### 6. Deploy
-```bash
-firebase deploy
-```
+| Tầng (Tier) | Công Nghệ Sử Dụng | Môi Trường Triển Khai (Cloud) | Vai Trò & Chức Năng |
+| :--- | :--- | :--- | :--- |
+| **Presentation Layer** | HTML5, CSS3, Vanilla JavaScript | **Render** (Static Site) | Hiển thị UI/UX, tương tác DOM, gửi HTTP Requests (JSON) qua REST API. |
+| **Application Layer** | Node.js, Express.js | **Render** (Web Service qua Docker) | Xử lý logic nghiệp vụ, xác thực JWT/Token, kiểm tra dữ liệu, điều hướng API. |
+| **Data Layer** | Cloud Firestore, Firebase Auth, Firebase Storage | **Firebase Cloud Platform** | Lưu trữ NoSQL tập trung (`users`, `products`, `orders`, `reviews`), quản lý Auth và tệp tin tĩnh. |
 
 ---
 
-## 🌐 Hosting là Gì?
+## 💻 Yêu Cầu Môi Trường
 
-Dịch vụ cho phép website chạy 24/7 trên máy chủ.
-- Miễn phí 10GB/tháng
-- SSL/HTTPS tự động
-- CDN toàn cầu
-
-**URL:** https://web-dienthoai0-dtdm.web.app
+- **Node.js:** v16.x trở lên
+- **Docker:** (Tùy chọn, dùng cho việc đóng gói backend)
+- **Git:** Quản lý mã nguồn
+- **Tài khoản Cloud:** Render & Google Firebase
 
 ---
 
-## 🔗 Domain là Gì?
+## 📁 Cấu Trúc Dự Án
 
-Địa chỉ website (ví dụ: google.com).
-- **Hiện tại:** web-dienthoai0-dtdm.web.app (miễn phí)
-- **Mua riêng:** GoDaddy, Namecheap, v.v.
-
----
-
-## 📁 Cấu Trúc
-
-```
+```text
 Website-Store-Sells-Phones/
-├── backend/          # API
-├── frontend/         # Website
-└── public/           # Hosting
-```
-
----
-
-## 🗓️ Tương Lai
-
-- Q2 2026: Mobile App, Wishlist
-- Q3 2026: Payment Gateway, Chatbot
-- Q4 2026: Multi-language, AR
-- 2027: Loyalty Program, iOS/Android
-
----
-
-## 📞 Liên Hệ
-
-| Kênh | Thông Tin |
-|------|-----------|
-| Email | support@phonestore.vn |
-| Tech | tech@phonestore.vn |
-| Issues | [GitHub](https://github.com/NhatQuenTen/Thuong-Mai-Dien-Tu/issues) |
-| Website | https://web-dienthoai0-dtdm.web.app |
-
----
-
-## 📄 License
-
-MIT License © 2026 Website Store Sells Phones 🚀
+├── frontend/                     # Presentation Layer
+│   ├── ADMIN/                    # Giao diện dành cho quản trị viên
+│   │   ├── admin.html            # Dashboard
+│   │   ├── products.html         # Quản lý sản phẩm
+│   │   └── users.html            # Quản lý người dùng
+│   ├── User/                     # Giao diện dành cho khách hàng
+│   │   ├── index.html            # Trang chủ
+│   │   ├── detail.html           # Chi tiết sản phẩm
+│   │   ├── cart.html             # Giỏ hàng
+│   │   └── payment.html          # Thanh toán
+│   ├── css/                      # Stylesheet định kiểu giao diện
+│   ├── js/                       # Mã nguồn JS xử lý gọi REST API
+│   └── assets/                   # Hình ảnh tĩnh, banners, icons
+│
+└── backend/                      # Application Layer
+    ├── middleware/               # CORS, Auth token, Data Validation
+    ├── routes/                   # Routing các đường dẫn API (/api/products, /api/orders,...)
+    ├── services/                 # Logic nghiệp vụ & tương tác Firebase SDK
+    ├── tests/                    # Unit tests & Integration tests
+    ├── Dockerfile                # File cấu hình đóng gói container
+    ├── firebase-admin.js         # Khởi tạo kết nối Firebase Admin SDK
+    └── server.js                 # Entry point chạy máy chủ Express
