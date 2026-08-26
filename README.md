@@ -83,20 +83,3 @@ Website-Store-Sells-Phones/
     ├── Dockerfile                # File cấu hình đóng gói container
     ├── firebase-admin.js         # Khởi tạo kết nối Firebase Admin SDK
     └── server.js                 # Entry point chạy máy chủ Express
-
-
-##🗓️ Đánh Giá & Hướng Phát Triển
-Hạn chế hiện tại
-Phân trang API chưa tối ưu triệt để cho tập dữ liệu cực lớn.
-
-Cần tăng cường cơ chế monitoring tự động và hệ thống backup định kỳ cho cơ sở dữ liệu.
-
-Định hướng tương lai
-Bổ sung thanh toán trực tuyến qua cổng thanh toán VNPay/Momo.
-
-Tối ưu Caching (Redis) và Lazy Loading hình ảnh để cải thiện tốc độ tải.
-
-Mở rộng kiến trúc Backend hỗ trợ Load Balancing khi lưu lượng tăng cao.
-
-##📄 License & Thông Tin
-MIT License © 2026 PhoneStore Project - UTH
